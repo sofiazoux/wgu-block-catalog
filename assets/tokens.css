@@ -1,0 +1,113 @@
+/* tokens.css — WGU course design tokens for the block specimen.
+ *
+ * SOURCE OF TRUTH: openedx-blocks/_tokens.css in the WGU prototype repo,
+ * which in turn mirrors the Next.js token files (src/styles/tokens-*.css)
+ * and, ultimately, the Figma design system. These values are NOT invented
+ * for the catalog — they are the course tokens, copied verbatim so the
+ * rendered block matches what students will actually read.
+ *
+ * SCOPE: everything is scoped to `.wgu-block`, exactly as in production,
+ * so the tokens never leak into the catalog chrome. The chrome has its own
+ * neutral palette in catalog.css and deliberately shares NOTHING with these
+ * brand tokens — brand colour belongs only to the specimen.
+ *
+ * Only the subset the Flexible Content Block needs is included; the full
+ * ramp lives in openedx-blocks/_tokens.css.
+ */
+
+.wgu-block {
+  /* ============================================================
+   * PARAGON PRIMITIVES — raw colours. Never consumed directly in
+   * block styles; the semantic tokens below resolve to them.
+   * ============================================================ */
+  --paragon-color-primary-500: #002855;
+  --paragon-color-secondary-200: #b0d3fa;
+  --paragon-color-secondary-500: #0070f0;
+  --paragon-color-secondary-600: #0050aa;
+
+  --paragon-color-gray-100: #ffffff;
+  --paragon-color-gray-200: #f2f2f2;
+  --paragon-color-gray-300: #d6d9df;
+  --paragon-color-gray-500: #808080;
+  --paragon-color-gray-700: #4d4d4d;
+  --paragon-color-gray-900: #1a1a1a;
+
+  /* Extended primitives (petrol / deep-navy / cyan are canonical;
+   * mint / coral pending official naming — see _tokens.css). */
+  --paragon-color-petrol-400: #55b7c8;
+  --paragon-color-deep-navy-500: #223e5d;
+  --paragon-color-cyan-300: #8cdcea;
+  --paragon-color-mint-100: #e9f6f5;
+  --paragon-color-coral-500: #f0664a;
+
+  /* ============================================================
+   * SEMANTIC TOKENS — use these in block styles.
+   * ============================================================ */
+  --pgn-wgu-background-main-navy: var(--paragon-color-deep-navy-500);
+  --pgn-wgu-background-main-blue: var(--paragon-color-secondary-500);
+  --pgn-wgu-background-main-lake: var(--paragon-color-petrol-400);
+  --pgn-wgu-background-pure-white: var(--paragon-color-gray-100);
+  --pgn-wgu-background-light-gray: var(--paragon-color-mint-100);
+  --pgn-wgu-background-accent-coral: var(--paragon-color-coral-500); /* TEMPORARY naming */
+
+  --pgn-wgu-color-text-main-navy: var(--paragon-color-secondary-600);
+  --pgn-wgu-color-text-main-blue: var(--paragon-color-secondary-500);
+  --pgn-wgu-color-text-main-body: var(--paragon-color-gray-700);
+  --pgn-wgu-color-text-secondary: var(--paragon-color-gray-500);
+  --pgn-wgu-color-text-pure-white: var(--paragon-color-gray-100);
+
+  --pgn-wgu-color-icon-navy: var(--paragon-color-deep-navy-500);
+  --pgn-wgu-color-icon-lake: var(--paragon-color-petrol-400);
+
+  --pgn-wgu-color-border-gray: var(--paragon-color-gray-200);
+  --pgn-wgu-color-border-form: var(--paragon-color-gray-300);
+
+  /* ============================================================
+   * SPACING — single scale, used for padding / gap / margin.
+   * ============================================================ */
+  --pgn-wgu-spacing-4: 4px;
+  --pgn-wgu-spacing-8: 8px;
+  --pgn-wgu-spacing-12: 12px;
+  --pgn-wgu-spacing-16: 16px;
+  --pgn-wgu-spacing-20: 20px;
+  --pgn-wgu-spacing-24: 24px;
+  --pgn-wgu-spacing-32: 32px;
+  --pgn-wgu-spacing-48: 48px;
+  --pgn-wgu-spacing-64: 64px;
+  --pgn-wgu-spacing-80: 80px;
+
+  /* ============================================================
+   * RADIUS
+   * ============================================================ */
+  --pgn-wgu-radius-base: 4px;
+  --pgn-wgu-radius-sm: 6px;
+  --pgn-wgu-radius-lg: 8px;
+  --pgn-wgu-radius-xl: 16px;
+  --pgn-wgu-radius-xxl: 24px;
+
+  /* ============================================================
+   * TYPOGRAPHY — families resolve to the self-hosted woff2 (fonts.css).
+   * ============================================================ */
+  --pgn-wgu-family-sora: "Sora", system-ui, sans-serif;
+  --pgn-wgu-family-lato: "Lato", system-ui, sans-serif;
+
+  --pgn-wgu-weight-regular: 400;
+  --pgn-wgu-weight-bold: 700;
+
+  --pgn-wgu-size-h1: 40px;
+  --pgn-wgu-size-h2: 34px;
+  --pgn-wgu-size-h3: 30px;
+  --pgn-wgu-size-h4: 24px;
+  --pgn-wgu-size-h5: 20px;
+  --pgn-wgu-size-body-14: 14px;
+  --pgn-wgu-size-body-16: 16px;
+  --pgn-wgu-size-body-18: 18px;
+  --pgn-wgu-size-body-20: 20px;
+
+  --pgn-wgu-line-height-h2: 48px;
+  --pgn-wgu-line-height-h3: 44px;
+  --pgn-wgu-line-height-h4: 38px;
+  --pgn-wgu-line-height-h5: 34px;
+  --pgn-wgu-line-height-body-16: 24px;
+  --pgn-wgu-line-height-body-18: 28px;
+}

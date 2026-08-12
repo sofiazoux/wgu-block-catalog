@@ -1,0 +1,43 @@
+/* fonts.css — Self-hosted brand fonts (Sora + Lato).
+ *
+ * WHY SELF-HOSTED: this catalog must work opened directly from a file,
+ * offline, with no CDN links (see the prototype spec, section 4). The
+ * production OpenedX blocks load these same fonts via a Google Fonts
+ * @import; here we vendor the latin-subset woff2 files locally so the
+ * specimen renders on-brand with zero network access.
+ *
+ * The files are the official OFL builds served by Google Fonts:
+ *   - Lato    v25  (static: 400 + 700, latin subset)
+ *   - Sora    v17  (variable weight axis, latin subset — one file covers
+ *                   the whole 100–800 range, so 400 and 700 share it)
+ *
+ * font-display: swap avoids a flash of invisible text (FOIT); until the
+ * woff2 decodes, the fallback stack in tokens.css / catalog.css shows.
+ */
+
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./lato-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./lato-700.woff2") format("woff2");
+}
+
+/* Sora is a variable font: a single file serves every weight from 100 to
+ * 800. Declaring the weight as a RANGE lets the browser interpolate the
+ * exact weight (400 body, 700 headings) from that one download. */
+@font-face {
+  font-family: "Sora";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("./sora-var.woff2") format("woff2");
+}

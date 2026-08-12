@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Block catalog — WGU / OpenCraft</title>
+
+  <!-- This is client work; it must not be discoverable (§4). noindex here,
+       plus a Disallow in robots.txt. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="googlebot" content="noindex, nofollow" />
+  <meta name="description" content="Interactive spec prototype of proposed WGU content blocks. Internal — not for indexing." />
+
+  <!-- Load order matters:
+       1. fonts.css     — @font-face for the self-hosted brand fonts
+       2. tokens.css    — course design tokens, scoped to .wgu-block
+       3. catalog.css   — the neutral prototype chrome (:root vars)
+       4. flexible-content.css — the block reference implementation -->
+  <link rel="stylesheet" href="assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="assets/tokens.css" />
+  <link rel="stylesheet" href="assets/catalog.css" />
+  <link rel="stylesheet" href="blocks/flexible-content.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <!-- Classic scripts, loaded IN ORDER. Not ES modules: module imports are
+       CORS-blocked from file://, and this must run opened directly from a file
+       (§4). Each file's top-level declarations share the global scope, so app.js
+       sees the library globals defined by the two files before it. -->
+  <script src="blocks/flexible-content.js"></script>
+  <script src="blocks/spec-data.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# This is client work and must not be discoverable (see prototype spec §4).
+# Paired with a <meta name="robots" content="noindex, nofollow"> in index.html.
+User-agent: *
+Disallow: /

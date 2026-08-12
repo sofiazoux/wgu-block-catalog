@@ -1,0 +1,476 @@
+/* ============================================================================
+ * catalog.css — the PROTOTYPE CHROME.
+ *
+ * Design brief (§9): the chrome must recede so the block is the only thing with
+ * visual presence. Neutral greys, one restrained accent, monospace for
+ * technical text, two distinct surfaces (stage vs panels), generous space, no
+ * decoration (no shadows, gradients, or animated transitions in the chrome).
+ *
+ * IMPORTANT: nothing here shares tokens with the block. Brand colour lives only
+ * in tokens.css / the specimen. The chrome palette below is deliberately
+ * monochrome so the course content is the only place colour appears.
+ * ==========================================================================*/
+
+:root {
+  /* Chrome surfaces — two distinct planes (§9). */
+  --c-chrome:   #eceef0;   /* app background: panels/chrome sit on this        */
+  --c-panel:    #f7f8f9;   /* control + spec panel fill                        */
+  --c-panel-2:  #ffffff;   /* raised elements (cards, inputs)                  */
+  --c-stage:    #ffffff;   /* the STAGE — same surface as the course reading   */
+
+  /* Ink */
+  --c-ink:      #1b1e22;
+  --c-ink-2:    #4a5057;   /* secondary text                                   */
+  --c-muted:    #7c838b;   /* labels, meta                                     */
+
+  /* Lines */
+  --c-line:     #dcdfe3;
+  --c-line-2:   #c7ccd1;
+
+  /* The single restrained accent — a neutral charcoal, NOT a brand colour.
+   * Used only for interactive state (selected preset, active toggle, focus). */
+  --c-accent:   #2f333a;
+  --c-accent-ink: #ffffff;
+  --c-focus:    #8a9bb3;   /* focus ring: desaturated, clearly non-brand       */
+
+  /* Type registers (§9): sans for chrome, MONO for anything technical
+   * (measurements, class names, markup, rule references). Neither is a brand
+   * font — the register shift makes spec vs course content unmistakable. */
+  --c-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --c-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --c-radius: 6px;
+  --c-gap: 24px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--c-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--c-ink);
+  background: var(--c-chrome);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+button { font-family: inherit; }
+
+.mono { font-family: var(--c-mono); }
+
+/* ----------------------------------------------------------------------------
+ * TOP BAR — persistent. Carries the back link and the standing "proposal"
+ * status framing (§11).
+ * --------------------------------------------------------------------------*/
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--c-gap);
+  padding: 12px 24px;
+  background: var(--c-panel);
+  border-bottom: 1px solid var(--c-line);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.topbar__brand {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar__brand .mono { color: var(--c-muted); font-weight: 400; font-size: 12px; }
+.topbar__spacer { flex: 1; }
+
+/* Standing proposal indicator (§11) — quiet, persistent, never in the way. */
+.proposal-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--c-mono);
+  font-size: 11px;
+  color: var(--c-ink-2);
+  background: var(--c-panel-2);
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+.proposal-flag::before {
+  content: "";
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #c99a2e; /* amber dot = "pending" */
+}
+
+.back-link {
+  font-family: var(--c-mono);
+  font-size: 12px;
+  color: var(--c-ink-2);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--c-ink); }
+
+/* ============================================================================
+ * CATALOG INDEX (§5.1)
+ * ==========================================================================*/
+.catalog { max-width: 1100px; margin: 0 auto; padding: 48px 24px 80px; }
+.catalog__lede { max-width: 62ch; margin-bottom: 40px; }
+.catalog__lede h1 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 10px; }
+.catalog__lede p { color: var(--c-ink-2); margin: 0; }
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--c-gap);
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--c-panel-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--c-radius);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+}
+.card:hover { border-color: var(--c-line-2); }
+.card:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; }
+/* Static preview lives on the stage surface, framing the card like a specimen. */
+.card__preview {
+  background: var(--c-stage);
+  border-bottom: 1px solid var(--c-line);
+  height: 150px;
+  padding: 16px;
+  overflow: hidden;
+  position: relative;
+}
+.card__body { padding: 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.card__title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.card__desc { color: var(--c-ink-2); font-size: 13px; flex: 1; }
+.card__foot { display: flex; align-items: center; justify-content: space-between; }
+.card__id { font-family: var(--c-mono); font-size: 11px; color: var(--c-muted); }
+
+/* Status badge (§5.1) — the one place a little colour is allowed, because
+ * status must be obvious at a glance. Kept low-saturation. */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--c-mono);
+  font-size: 11px; font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge--proposed  { color: #6a7178; background: #f0f1f2; border-color: #e0e2e4; }
+.badge--in-review { color: #9a6b12; background: #fbf3e2; border-color: #f0e0bf; }
+.badge--approved  { color: #2f7d46; background: #e9f6ee; border-color: #cfe9d8; }
+.badge--shipped   { color: #2b5f9e; background: #e9f1fb; border-color: #cfe0f4; }
+
+/* ============================================================================
+ * DETAIL VIEW (§5.2)
+ * ==========================================================================*/
+.detail { display: flex; flex-direction: column; min-height: calc(100vh - 53px); }
+
+.detail__header {
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid var(--c-line);
+  background: var(--c-panel);
+}
+.detail__title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.detail__title { font-size: 22px; letter-spacing: -0.02em; margin: 0; }
+.detail__framing {
+  max-width: 90ch;
+  margin-top: 12px;
+  color: var(--c-ink-2);
+  font-size: 13px;
+}
+.detail__framing strong { color: var(--c-ink); font-weight: 600; }
+
+/* The working area: controls rail | stage | spec panel. */
+.workbench {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr) 360px;
+  flex: 1;
+  min-height: 0;
+}
+.workbench.is-spec-collapsed { grid-template-columns: 264px minmax(0, 1fr) 44px; }
+
+/* ---- Controls rail (Content configuration + Inspector) ---- */
+.rail {
+  border-right: 1px solid var(--c-line);
+  background: var(--c-panel);
+  padding: 20px 18px;
+  overflow-y: auto;
+}
+.rail__section + .rail__section { margin-top: 28px; }
+.rail__label {
+  font-family: var(--c-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  margin: 0 0 12px;
+}
+
+.preset-group + .preset-group { margin-top: 16px; }
+.preset-group__name {
+  font-size: 11px; font-weight: 600; color: var(--c-ink-2);
+  margin: 0 0 6px;
+}
+.preset {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--c-panel-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--c-radius);
+  padding: 9px 11px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  color: var(--c-ink);
+  font-size: 13px;
+}
+.preset:hover { border-color: var(--c-line-2); }
+.preset:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 1px; }
+.preset[aria-pressed="true"] {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: var(--c-accent-ink);
+}
+.preset__name { font-weight: 500; }
+.preset__desc { display: none; } /* description shown in the stage caption bar */
+
+/* Inspector toggles */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 7px 0;
+  cursor: pointer;
+  color: var(--c-ink);
+  font-size: 13px;
+  text-align: left;
+}
+.toggle__box {
+  width: 34px; height: 20px; border-radius: 999px;
+  background: var(--c-line-2);
+  position: relative;
+  flex: none;
+}
+.toggle__box::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff;
+}
+.toggle[aria-pressed="true"] .toggle__box { background: var(--c-accent); }
+.toggle[aria-pressed="true"] .toggle__box::after { left: 16px; }
+.toggle:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; border-radius: 4px; }
+
+/* ---- Stage area ---- */
+.stage-wrap {
+  padding: 40px;
+  overflow: auto;
+  background: var(--c-chrome);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.stage-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--c-mono);
+  font-size: 12px;
+  color: var(--c-ink-2);
+}
+.stage-toolbar__width { color: var(--c-ink); }
+.stage-toolbar__preset { color: var(--c-muted); }
+.stage-presets { display: flex; gap: 6px; }
+.stage-presets button {
+  font-family: var(--c-mono); font-size: 11px;
+  border: 1px solid var(--c-line); background: var(--c-panel-2);
+  border-radius: 4px; padding: 3px 8px; cursor: pointer; color: var(--c-ink-2);
+}
+.stage-presets button:hover { border-color: var(--c-line-2); color: var(--c-ink); }
+
+/* The resizable frame. THIS is the query container: the block's @container and
+ * cqw resolve against this element's inline size, so the drag handle drives the
+ * block's responsive behaviour directly (§5.2). */
+.stage {
+  container-type: inline-size;
+  container-name: stage;
+  position: relative;
+  background: var(--c-stage);
+  border: 1px solid var(--c-line);
+  border-radius: var(--c-radius);
+  /* Default wide enough to show the desktop float layout immediately. The
+   * stage is NOT capped to its column (max-width:none): the .stage-wrap around
+   * it scrolls when the stage is wider than the available space, so the drag
+   * handle can grow the specimen past the panels and shrink it to watch the
+   * layout collapse. */
+  width: 900px;
+  max-width: none;
+  min-width: 280px;
+  /* native resize handle on the right edge; JS reports the width live */
+  resize: horizontal;
+  overflow: auto;
+  padding: 40px 32px;
+}
+.stage__inner { position: relative; }
+
+/* Generous space + a hint that the frame is draggable. */
+.stage::after {
+  content: "";
+  position: absolute;
+  right: 3px; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 40px; border-radius: 2px;
+  background: var(--c-line-2);
+  pointer-events: none;
+}
+
+/* ============================================================================
+ * INSPECTOR OVERLAYS (§5.2)
+ * All overlays are drawn by JS into .stage__overlay, positioned over the block.
+ * ==========================================================================*/
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+/* Grid tracks + margin area */
+.overlay__zone {
+  position: absolute;
+  top: 0; bottom: 0;
+  font-family: var(--c-mono);
+  font-size: 10px;
+}
+.overlay__zone--track  { background: rgba(138,155,179,0.10); border-inline: 1px dashed rgba(138,155,179,0.5); }
+.overlay__zone--measure{ background: rgba(120,200,150,0.08); border-inline: 1px dashed rgba(80,160,110,0.6); }
+.overlay__zone--margin { background: rgba(200,150,120,0.10); border-inline: 1px dashed rgba(170,120,90,0.55); }
+.overlay__zone-label {
+  position: absolute; top: 4px; left: 4px;
+  color: var(--c-ink-2);
+  background: rgba(255,255,255,0.7);
+  padding: 1px 4px; border-radius: 3px;
+}
+
+/* Row boundaries */
+.stage.show-rows .wgu-block-flexible-content__row {
+  outline: 1px dashed rgba(138,155,179,0.9);
+  outline-offset: 2px;
+  position: relative;
+}
+.stage.show-rows .wgu-block-flexible-content__row::before {
+  content: "row " attr(data-row-type);
+  position: absolute;
+  top: -9px; left: 0;
+  font-family: var(--c-mono);
+  font-size: 9px;
+  color: var(--c-ink-2);
+  background: var(--c-stage);
+  padding: 0 4px;
+}
+
+/* Measure guide */
+.overlay__guide {
+  position: absolute; top: 0; bottom: 0;
+  border-left: 1px solid rgba(80,120,200,0.7);
+}
+.overlay__guide-label {
+  position: absolute; top: 8px; left: 6px;
+  font-family: var(--c-mono); font-size: 10px;
+  white-space: nowrap;
+  color: #2b3f66;
+  background: rgba(255,255,255,0.82);
+  padding: 1px 5px; border-radius: 3px;
+}
+.overlay__guide-label.is-fail { color: #a3271f; }
+
+/* ============================================================================
+ * SPEC PANEL (§5.2) — persistent, collapsible, developer-facing.
+ * ==========================================================================*/
+.spec {
+  border-left: 1px solid var(--c-line);
+  background: var(--c-panel);
+  overflow-y: auto;
+  min-width: 0;
+}
+.spec__bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--c-line);
+  position: sticky; top: 0; background: var(--c-panel);
+}
+.spec__bar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--c-muted); margin: 0; font-family: var(--c-mono); }
+.spec__collapse {
+  border: 1px solid var(--c-line); background: var(--c-panel-2);
+  border-radius: 4px; width: 26px; height: 24px; cursor: pointer; color: var(--c-ink-2);
+}
+.is-spec-collapsed .spec__body { display: none; }
+.is-spec-collapsed .spec__bar h2 { display: none; }
+.is-spec-collapsed .spec__bar { justify-content: center; padding: 12px 6px; }
+
+.spec__body { padding: 16px 14px 40px; }
+.spec__section + .spec__section { margin-top: 22px; }
+.spec__section h3 {
+  font-family: var(--c-mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--c-muted); margin: 0 0 10px;
+}
+
+/* Rules list — the rule that the current configuration triggers is highlighted */
+.rule {
+  border: 1px solid var(--c-line);
+  border-radius: var(--c-radius);
+  background: var(--c-panel-2);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  color: var(--c-ink-2);
+}
+.rule__head { display: flex; gap: 8px; align-items: baseline; }
+.rule__id { font-family: var(--c-mono); font-size: 11px; color: var(--c-muted); flex: none; }
+.rule__title { font-weight: 600; color: var(--c-ink); font-size: 12.5px; }
+.rule.is-active {
+  border-color: var(--c-accent);
+  box-shadow: inset 3px 0 0 var(--c-accent);
+}
+.rule.is-active .rule__id { color: var(--c-ink); }
+
+/* Markup block */
+.markup {
+  font-family: var(--c-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  background: #1b1e22;
+  color: #e6e8ea;
+  border-radius: var(--c-radius);
+  padding: 12px;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+.markup .tag { color: #9cdcff; }
+.markup .cls { color: #a7d78a; }
+.markup .cm  { color: #7c838b; }
+
+/* Decision log */
+.decision { font-size: 12.5px; color: var(--c-ink-2); margin-bottom: 14px; }
+.decision h4 { font-size: 12.5px; color: var(--c-ink); margin: 0 0 4px; }
+
+/* ============================================================================
+ * RESPONSIVE — the CHROME itself. On smaller screens the rail and spec panel
+ * stack under the stage rather than starving it.
+ * ==========================================================================*/
+@media (max-width: 1080px) {
+  .workbench, .workbench.is-spec-collapsed { grid-template-columns: 1fr; }
+  .rail { border-right: none; border-bottom: 1px solid var(--c-line); }
+  .spec { border-left: none; border-top: 1px solid var(--c-line); }
+}

@@ -1,0 +1,266 @@
+/* ============================================================================
+ * flexible-content.css — WGU Flexible Content Block
+ * REFERENCE IMPLEMENTATION of the layout rules in the prototype spec (§6).
+ *
+ * This file is documentation as much as code: OpenCraft will build the block
+ * as a raw HTML/CSS block in OpenedX, so the CSS here IS the spec, not a
+ * translation of it. Read it top to bottom.
+ *
+ * THE GOVERNING CONSTRAINT (§6.1): when text sits beside a side element the
+ * "narrow measure" must never drop below 45ch. Everything about the widths
+ * below is arranged, in ch units, so that floor holds by construction — you
+ * cannot author your way under it. The catalog's measure guide (inspector)
+ * reports the live character count so you can verify it.
+ *
+ * LAYOUT MODEL — a single centered column, three horizontal zones:
+ *
+ *   |<-- left-track -->|<---------- measure (65ch) ---------->|<-- margin -->|
+ *   [ headings outdent ][ body text column                    ][ asides bleed]
+ *
+ *   - left-track  : structural air on the left that ONLY headings reach into,
+ *                   via a negative margin (the "outdent", §6.4).
+ *   - measure     : the body text column. Wide measure target 65ch (§6.1).
+ *   - margin-area : structural air on the right that floated asides bleed into
+ *                   with a negative right margin (§6.2).
+ *
+ * All three zones are expressed in ch and applied on elements rendered in the
+ * body font (Lato 16px), so 1ch is the same width everywhere (~8px) and the
+ * arithmetic is honest.
+ *
+ * RESPONSIVE (§6.7): the float layout is opt-IN via a container query on the
+ * stage. The default (narrow) styling below is the mobile layout — single
+ * column, full measure, no float, no outdent. Because the desktop rules only
+ * ADD on top inside @container, the DOM order is already the reading order and
+ * we never touch CSS `order`.
+ * ==========================================================================*/
+
+.wgu-block-flexible-content {
+  /* --- The three horizontal zones (ch, resolved in the Lato 16px context) ---
+   * NOTE ON ch: Lato's digit advance is wide (~0.58em), so 1ch ≈ 9.3px at
+   * 16px. The block's natural width is therefore (6+65+14)ch ≈ 790px; the
+   * container query below only enables the float layout once the stage is
+   * actually that wide, so the margin area always has room for the bleed. */
+  --fc-measure: 65ch;        /* wide measure target (range 62–68ch, §6.1)      */
+  --fc-left-track: 6ch;      /* left track for heading outdents                */
+  --fc-margin-area: 14ch;    /* right margin asides bleed into (holds max 13ch)*/
+
+  /* --- Float mechanics (§6.2). Named exactly as in the spec snippet. -------- */
+  --gutter: 3ch;             /* clear space between text and the floated aside */
+  --outdent: 2ch;            /* heading horizontal offset — deliberately small */
+
+  /* Full width of the centered column = the three zones summed. */
+  --fc-container: calc(var(--fc-left-track) + var(--fc-measure) + var(--fc-margin-area));
+
+  max-width: var(--fc-container);
+  margin-inline: auto;               /* centre the specimen; air on both sides */
+  color: var(--pgn-wgu-color-text-main-body);
+  font-family: var(--pgn-wgu-family-lato);
+  /* Body at 16px — the production base (_shared.css sets .wgu-block to
+   * body-16). Comfortable measure without an oversized px footprint. */
+  font-size: var(--pgn-wgu-size-body-16);
+  line-height: var(--pgn-wgu-line-height-body-16);
+}
+
+/* ----------------------------------------------------------------------------
+ * ROWS (§6.5, §6.6)
+ * A row is a derived grouping, never authored — see flexible-content.js. The
+ * gap between rows equals normal paragraph spacing so derived breaks are
+ * invisible (§6.7).
+ * --------------------------------------------------------------------------*/
+.wgu-block-flexible-content__row {
+  display: flow-root;          /* contains the float; the wrap ends with the row */
+  max-width: var(--fc-measure);
+}
+
+/* Vertical rhythm: rows and paragraphs share one spacing value, so a row
+ * boundary reads exactly like a paragraph break. */
+.wgu-block-flexible-content__row + .wgu-block-flexible-content__row,
+.wgu-block-flexible-content__text > * + * {
+  margin-top: var(--pgn-wgu-spacing-24);
+}
+
+/* ----------------------------------------------------------------------------
+ * TYPOGRAPHY — pulled from the course tokens (tokens.css), never invented.
+ * --------------------------------------------------------------------------*/
+.wgu-block-flexible-content h2,
+.wgu-block-flexible-content h3 {
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: var(--pgn-wgu-weight-bold);
+  color: var(--pgn-wgu-color-text-main-navy);
+}
+.wgu-block-flexible-content h2 {
+  font-size: var(--pgn-wgu-size-h3);
+  line-height: var(--pgn-wgu-line-height-h3);
+}
+.wgu-block-flexible-content h3 {
+  font-size: var(--pgn-wgu-size-h5);
+  line-height: var(--pgn-wgu-line-height-h5);
+}
+.wgu-block-flexible-content p {
+  font-size: var(--pgn-wgu-size-body-16);
+  line-height: var(--pgn-wgu-line-height-body-16);
+  /* Hyphenation is left OFF: the 45ch floor is what keeps the rag even; we do
+   * not lean on hyphenation to rescue a too-narrow measure. */
+}
+.wgu-block-flexible-content ul,
+.wgu-block-flexible-content ol {
+  padding-left: var(--pgn-wgu-spacing-24);
+}
+.wgu-block-flexible-content li + li {
+  margin-top: var(--pgn-wgu-spacing-8);
+}
+
+/* ----------------------------------------------------------------------------
+ * SIDE ELEMENTS — the aside (§6.2, §6.3)
+ * Default (narrow) state: full width, in normal flow, no float. This is the
+ * mobile layout and also the honest fallback if container queries are absent.
+ * --------------------------------------------------------------------------*/
+.wgu-block-flexible-content__aside {
+  margin-block: var(--pgn-wgu-spacing-16);
+}
+.wgu-block-flexible-content__aside figure {
+  margin: 0;
+}
+
+/* THE CONTAINER IMPOSES THE RATIO, NOT THE AUTHOR (§6.3).
+ * A portrait image dropped into a side slot is cropped to 4:3 by object-fit,
+ * never rendered tall enough to break the layout. */
+.wgu-block-flexible-content__aside img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--pgn-wgu-radius-lg);
+}
+.wgu-block-flexible-content__figcaption {
+  margin-top: var(--pgn-wgu-spacing-8);
+  font-size: var(--pgn-wgu-size-body-14);
+  color: var(--pgn-wgu-color-text-secondary);
+}
+
+/* Callout is the non-image side element. Same float slot, no aspect ratio. */
+.wgu-block-flexible-content__aside--callout {
+  background: var(--pgn-wgu-background-light-gray);
+  border-left: 3px solid var(--pgn-wgu-color-icon-lake);
+  border-radius: var(--pgn-wgu-radius-lg);
+  padding: var(--pgn-wgu-spacing-20);
+}
+.wgu-block-flexible-content__aside--callout .wgu-block-flexible-content__callout-title {
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: var(--pgn-wgu-weight-bold);
+  font-size: var(--pgn-wgu-size-body-16);
+  color: var(--pgn-wgu-color-text-main-navy);
+  margin-bottom: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-flexible-content__aside--callout p {
+  font-size: var(--pgn-wgu-size-body-16);
+  line-height: var(--pgn-wgu-line-height-body-16);
+}
+
+/* ----------------------------------------------------------------------------
+ * MEDIA ROWS — default (narrow) state: full width, natural stacking.
+ * --------------------------------------------------------------------------*/
+.wgu-block-flexible-content__media {
+  margin: 0;
+}
+.wgu-block-flexible-content__media img {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+  border-radius: var(--pgn-wgu-radius-lg);
+}
+.wgu-block-flexible-content__row--media-hero img { aspect-ratio: 16 / 9; }
+.wgu-block-flexible-content__row--media-wide img { aspect-ratio: 16 / 9; }
+/* A bleed image loses its radius on narrow too, but keeps it until it actually
+ * bleeds (desktop) — set in the container query. */
+.wgu-block-flexible-content__row--media-bleed img { aspect-ratio: 21 / 9; }
+
+.wgu-block-flexible-content__media .wgu-block-flexible-content__figcaption {
+  max-width: var(--fc-measure);   /* captions stay at reading measure even when
+                                     the media is wider than the text column   */
+}
+
+/* ============================================================================
+ * DESKTOP LAYOUT — opt-in via a container query on the stage.
+ *
+ * Everything that makes the block "flexible" (the float wrap, the outdent, the
+ * margin/track zones, the media widths) lives in here. Below the threshold the
+ * block is a plain single column, which is the whole point of §6.7: reading
+ * order is the DOM order, no reshuffling.
+ *
+ * Threshold 50rem (800px): the block's natural width is (6+65+14)ch ≈ 790px at
+ * Lato 16px, so below this the float layout would not fit without the asides
+ * spilling out of the margin area. Keeping the threshold at the true footprint
+ * means the collapse is clean — the layout never overflows in the transition.
+ * ==========================================================================*/
+@container stage (min-width: 50rem) {
+
+  /* Text/aside rows sit after the left track and are capped at the measure. */
+  .wgu-block-flexible-content__row {
+    margin-left: var(--fc-left-track);
+  }
+
+  /* HEADING OUTDENT (§6.4): headings — and only headings — reach left into the
+   * track with a negative margin. The offset is small on purpose: too much
+   * separation makes the heading read as detached from its text.
+   * OPEN ITEM (§6.4): assumed section headings (h2) only until told otherwise. */
+  .wgu-block-flexible-content__row h2 {
+    margin-left: calc(-1 * var(--outdent));
+  }
+
+  /* THE FLOAT WRAP (§6.2). This snippet is the spec's, verbatim in intent:
+   * the aside floats right inside the flow-root row, and a negative right
+   * margin pulls the part that exceeds the overlap out into the margin area.
+   * Only `--aside-overlap` of the element sits inside the text column, so the
+   * text wraps in (measure − gutter − overlap) = the narrow measure. */
+  .wgu-block-flexible-content__aside {
+    float: right;
+    width: var(--aside-width);
+    margin-left: var(--gutter);
+    margin-bottom: var(--gutter);
+    margin-top: 0;
+    /* pull the element past the text column into the margin area */
+    margin-right: calc(-1 * (var(--aside-width) - var(--aside-overlap)));
+  }
+
+  /* CLOSED SET OF IMAGE SIZES (decision log §10): image width is NOT free-form,
+   * because it determines the narrow measure. Three sizes, each chosen so
+   *   narrow = 65ch − gutter(3ch) − overlap ≥ 45ch, i.e. overlap ≤ 17ch.
+   *
+   *   size    aside-width   overlap   narrow measure   bleed into margin
+   *   small       20ch        12ch        50ch               8ch
+   *   medium      26ch        15ch        47ch              11ch
+   *   large       30ch        17ch        45ch (FLOOR)      13ch
+   *
+   * The large size deliberately sits the narrow measure exactly on the 45ch
+   * floor — that is the "narrow measure at its floor" edge case (§8).
+   * The margin-area (15ch) is sized to hold the largest bleed (13ch). */
+  .wgu-block-flexible-content__aside--size-small  { --aside-width: 20ch; --aside-overlap: 12ch; }
+  .wgu-block-flexible-content__aside--size-medium { --aside-width: 26ch; --aside-overlap: 15ch; }
+  .wgu-block-flexible-content__aside--size-large  { --aside-width: 30ch; --aside-overlap: 17ch; }
+
+  /* MEDIA WIDTHS (§6.5) — each media row reaches a different set of zones.
+   * media-wide: text column + margin area (not the left track). */
+  .wgu-block-flexible-content__row--media-wide {
+    max-width: calc(var(--fc-measure) + var(--fc-margin-area));
+  }
+  /* media-hero: the full centered column — left track + measure + margin —
+   * so it spans "multiple columns" as the spec puts it. Pull left to eat the
+   * left-track offset the row would otherwise carry. */
+  .wgu-block-flexible-content__row--media-hero {
+    margin-left: 0;
+    max-width: var(--fc-container);
+  }
+  /* media-bleed: breaks the container entirely, edge to edge of the STAGE.
+   * 100cqw is the stage's inner width (the stage is the query container), so
+   * this works wherever the centered block happens to sit. */
+  .wgu-block-flexible-content__row--media-bleed {
+    margin-left: 50%;
+    width: 100cqw;
+    max-width: 100cqw;
+    transform: translateX(-50%);
+  }
+  .wgu-block-flexible-content__row--media-bleed img {
+    border-radius: 0;   /* a bleed touching the stage edges keeps no corners */
+  }
+}
