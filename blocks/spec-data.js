@@ -18,13 +18,18 @@ const RULES = [
     always: true,
   },
   {
-    id: "§6.1", title: "Measure: 65ch wide, 45ch narrow floor",
-    body: "Wide measure targets 65ch. Beside a side element the narrow measure must never drop below 45ch — the governing constraint of the block. The narrow measure is a consequence of image width, not authored.",
+    id: "§6.1", title: "Wide reading measure",
+    body: "The body text column targets 51ch ≈ 68 real characters — a comfortable reading measure. (ch is calibrated to real characters: Lato's “0” is ~1.35× the average glyph, so nominal ch overstates line length.)",
+    always: true,
+  },
+  {
+    id: "§6.1", title: "Narrow measure holds its floor",
+    body: "Beside a side element the narrow measure must never drop below the 35ch floor (≈47 real characters) — the governing constraint of the block. The narrow measure is a consequence of image width, not authored.",
     triggers: ["aside"],
   },
   {
     id: "§6.1", title: "Narrow measure sits on the floor",
-    body: "The largest image size drives the narrow measure to exactly 45ch. This is the closed-set image size doing its job: an author cannot push below the floor.",
+    body: "The largest image size drives the narrow measure to exactly 35ch. This is the closed-set image size doing its job: an author cannot push below the floor.",
     triggers: ["measure-floor"],
   },
   {
@@ -60,7 +65,7 @@ const RULES = [
   {
     id: "§6.7", title: "On narrow viewports the wrap disappears",
     body: "Below the container-query threshold the side element becomes full width and enters normal flow; text returns to full measure. DOM order already matches reading order — no CSS order reshuffling.",
-    triggers: ["collapsed"],
+    triggers: ["aside-collapsed"],
   },
   {
     id: "§6.5", title: "Hero media — full-width, 16:9, spans columns",
@@ -87,7 +92,7 @@ const RULES = [
 const DECISIONS = [
   {
     title: "Text wraps around side elements",
-    body: "Rather than a fixed narrower column. A fixed column would optically shrink images to the point of undermining the redesign. Wrapping keeps images useful; the 45ch floor keeps line-length variation to roughly 1.5×, which the eye adapts to. Earlier course versions reached more than 2×, which did not work.",
+    body: "Rather than a fixed narrower column. A fixed column would optically shrink images to the point of undermining the redesign. Wrapping keeps images useful; the narrow-measure floor keeps line-length variation to roughly 1.5×, which the eye adapts to. Earlier course versions reached more than 2×, which did not work.",
   },
   {
     title: "Whitespace below a short group is accepted",

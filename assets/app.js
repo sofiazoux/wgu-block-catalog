@@ -160,20 +160,23 @@ function renderDetail(id) {
     grid: false,
     rows: false,
     measure: false,
-    specCollapsed: false,
+    specCollapsed: true, // start collapsed so the specimen dominates (§ proportion)
   };
 
   const detail = h("div", "detail");
 
-  // Header
+  // Header — compact. One-line framing that expands for the full nuance.
   const header = h("div", "detail__header");
   const titleRow = h("div", "detail__title-row");
   titleRow.appendChild(h("h1", "detail__title", b.name));
   titleRow.appendChild(statusBadge(b.status, b.statusLabel));
+  const framing = document.createElement("details");
+  framing.className = "framing";
+  framing.innerHTML =
+    '<summary><strong>Rendered proposal</strong> — the design and its rules, not an authoring tool. <span class="framing__hint">details</span></summary>' +
+    '<p>It shows the design and the rules it obeys, not how authors produce it. Controls describe <em>states of the content</em>, not actions an author takes. Pending feedback from WGU and OpenCraft.</p>';
+  titleRow.appendChild(framing);
   header.appendChild(titleRow);
-  const framing = h("p", "detail__framing");
-  framing.innerHTML = "<strong>This is a rendered proposal, not a mockup of an authoring tool.</strong> It shows the design and the rules it obeys — not how authors produce it. Controls describe <em>states of the content</em>, not actions an author takes. Pending feedback from WGU and OpenCraft.";
-  header.appendChild(framing);
   detail.appendChild(header);
 
   // Workbench: rail | stage | spec
@@ -192,6 +195,7 @@ function renderDetail(id) {
       const btn = h("button", "preset");
       btn.type = "button";
       btn.dataset.preset = pr.id;
+      btn.title = pr.label;
       btn.setAttribute("aria-pressed", String(pr.id === state.presetId));
       btn.appendChild(h("span", "preset__name", pr.label));
       btn.addEventListener("click", () => { state.presetId = pr.id; refresh(); });
@@ -212,28 +216,74 @@ function renderDetail(id) {
   // -- Stage --
   const stageWrap = h("div", "stage-wrap");
   const toolbar = h("div", "stage-toolbar");
-  const widthReadout = h("span", "stage-toolbar__width mono", "stage: — px");
-  const presetReadout = h("span", "stage-toolbar__preset", "");
+  // width readout: label in plain type, the px VALUE in mono (Group 3 rule —
+  // monospace is reserved for technical values).
+  const widthReadout = h("span", "readout");
+  widthReadout.innerHTML = 'stage <b class="mono">—</b> px';
+  const widthValue = widthReadout.querySelector("b");
+  // live real-character count of the longest rendered line (calibration aid).
+  const charReadout = h("span", "readout");
+  charReadout.innerHTML = 'longest line <b class="mono">—</b> chars';
+  const charValue = charReadout.querySelector("b");
+  const modeReadout = h("span", "readout readout--mode", "");
   const stagePresets = h("div", "stage-presets");
-  [["Mobile", 360], ["Tablet", 720], ["Wide", 900]].forEach(([label, px]) => {
+  [["Mobile", 360], ["Tablet", 760], ["Wide", 980]].forEach(([label, px]) => {
     const b2 = h("button", null, label);
     b2.type = "button";
-    b2.addEventListener("click", () => { stage.style.width = px + "px"; refresh(); });
+    b2.addEventListener("click", () => { stage.style.width = px + "px"; layout(); });
     stagePresets.appendChild(b2);
   });
   toolbar.appendChild(widthReadout);
-  toolbar.appendChild(presetReadout);
-  toolbar.appendChild(h("span", "topbar__spacer"));
+  toolbar.appendChild(charReadout);
+  toolbar.appendChild(modeReadout);
+  toolbar.appendChild(h("span", "stage-toolbar__spacer"));
   toolbar.appendChild(stagePresets);
   stageWrap.appendChild(toolbar);
+  // the state description, in plain readable type on its own line
+  const presetReadout = h("p", "stage-caption", "");
+  stageWrap.appendChild(presetReadout);
 
+  // stage + custom drag handle. Native `resize: horizontal` only exposed a
+  // corner grip and proved unreliable, so the stage sits in a flex frame with
+  // a full-height edge handle driven by Pointer Events — works with mouse AND
+  // trackpad, resizes continuously, and the ResizeObserver keeps px + chars live.
+  const stageFrame = h("div", "stage-frame");
   const stage = h("div", "stage");
   const stageInner = h("div", "stage__inner");
   const overlay = h("div", "overlay");
   stageInner.appendChild(overlay);
   stage.appendChild(stageInner);
-  stageWrap.appendChild(stage);
+  const handle = h("div", "stage__handle");
+  handle.setAttribute("role", "separator");
+  handle.setAttribute("aria-orientation", "vertical");
+  handle.title = "Drag to resize the stage";
+  stageFrame.appendChild(stage);
+  stageFrame.appendChild(handle);
+  stageWrap.appendChild(stageFrame);
   workbench.appendChild(stageWrap);
+
+  // drag-to-resize (pointer events cover mouse + trackpad)
+  let dragX = 0, dragW = 0;
+  const onMove = (e) => {
+    const w = Math.max(280, Math.min(2000, dragW + (e.clientX - dragX)));
+    stage.style.width = w + "px";
+    layout();
+  };
+  const onUp = (e) => {
+    try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    handle.classList.remove("is-dragging");
+  };
+  handle.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    dragX = e.clientX;
+    dragW = stage.offsetWidth;
+    try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+    handle.classList.add("is-dragging");
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  });
 
   // -- Spec panel --
   const spec = h("div", "spec");
@@ -255,12 +305,19 @@ function renderDetail(id) {
   spec.appendChild(specBody);
   workbench.appendChild(spec);
 
+  // apply the initial (collapsed) spec state
+  workbench.classList.toggle("is-spec-collapsed", state.specCollapsed);
+  spec.classList.toggle("is-spec-collapsed", state.specCollapsed);
+  collapseBtn.textContent = state.specCollapsed ? "⟨" : "⟩";
+
   detail.appendChild(workbench);
   app.appendChild(detail);
 
   // ---- rendering pipeline ----
   let currentRows = [];
-  const glyphPx = measureGlyph();
+  let rulesEl = null;                 // the (persistent) active-rules container
+  let glyphPx = measureGlyph();       // px per 1ch  (for the ch-based zones)
+  let avgChar = measureAvgChar();     // px per average character (for real chars)
 
   function refresh() {
     // reflect preset selection
@@ -278,25 +335,36 @@ function renderDetail(id) {
     stageInner.querySelectorAll(".wgu-block").forEach((n) => n.remove());
     stageInner.appendChild(block);
 
-    renderSpec(specBody, currentRows, () => computeTriggers(currentRows, stageInner, glyphPx));
+    rulesEl = renderSpec(specBody, currentRows); // static parts + empty rules box
     layout();
   }
 
   function layout() {
     const trig = computeTriggers(currentRows, stageInner, glyphPx);
     // width readout: the container width the block actually sees
-    const cw = containerWidth(stage);
-    widthReadout.textContent = `stage: ${Math.round(cw)} px` + (trig.has("collapsed") ? "  · collapsed" : "  · wrap on");
-    drawOverlays(overlay, stageInner, glyphPx, { grid: state.grid, measure: state.measure, rows: currentRows, trig });
-    // re-highlight rules (triggers depend on live geometry)
-    highlightRules(specBody, trig);
+    widthValue.textContent = Math.round(containerWidth(stage));
+    // live real-character count of the longest rendered line
+    const block = stageInner.querySelector(".wgu-block");
+    const lc = block ? longestLineChars(block, avgChar) : 0;
+    charValue.textContent = lc || "—";
+    // mode
+    const collapsed = trig.has("collapsed");
+    modeReadout.textContent = collapsed ? "collapsed" : "wrap on";
+    modeReadout.classList.toggle("is-collapsed", collapsed);
+    drawOverlays(overlay, stageInner, glyphPx, avgChar, { grid: state.grid, measure: state.measure, rows: currentRows, trig });
+    // rebuild the active-rules list (the active set depends on live geometry)
+    updateRules(rulesEl, trig);
   }
 
   // live: react to the resizable frame
   const ro = new ResizeObserver(() => layout());
   ro.observe(stage);
   // fonts can change glyph metrics; recompute once ready
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => refresh());
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
+    glyphPx = measureGlyph();
+    avgChar = measureAvgChar();
+    refresh();
+  });
 
   refresh();
 }
@@ -376,6 +444,31 @@ function measureGlyph() {
   return w || 8;
 }
 
+/* Average character width in the body font — the basis for the REAL character
+ * count. The ch unit (glyph "0") overstates line length by ~1.35× in Lato, so
+ * the measure guide converts px→characters through this instead. Measured from
+ * a realistic English sample rather than a single glyph. */
+function measureAvgChar() {
+  const sample = "Behaviour rarely has a single cause. What a person does in a given moment is shaped at once by the situation directly in front of them and by patterns laid down long before they entered the room.";
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = "16px Lato, system-ui, sans-serif";
+  return ctx.measureText(sample).width / sample.length || 7;
+}
+
+/* Real characters in the longest rendered line: measure every <p>'s line boxes
+ * (one client rect per line) and convert the widest to characters. Live — it
+ * recomputes on every resize, so the reported count is what the eye sees. */
+function longestLineChars(block, avgChar) {
+  let max = 0;
+  block.querySelectorAll("p").forEach((p) => {
+    if (!p.firstChild) return;
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    for (const r of range.getClientRects()) if (r.width > max) max = r.width;
+  });
+  return max ? Math.round(max / avgChar) : 0;
+}
+
 /* The inline size the block's container query sees = stage content box. */
 function containerWidth(stage) {
   const cs = getComputedStyle(stage);
@@ -384,8 +477,8 @@ function containerWidth(stage) {
 
 /* Zone widths in ch, mirrored from flexible-content.css. Kept here as plain
  * numbers so the overlay maths is legible; the CSS is the source of truth. */
-const ZONES = { leftTrack: 6, measure: 65, marginArea: 14, gutter: 3 };
-const OVERLAP = { small: 12, medium: 15, large: 17 };
+const ZONES = { leftTrack: 5, measure: 51, marginArea: 11, gutter: 2 };
+const OVERLAP = { small: 10, medium: 12, large: 14 };
 
 /* Is the desktop float layout active? Read it straight off a rendered aside —
  * getComputedStyle reflects the container-query result exactly. Falls back to
@@ -394,7 +487,7 @@ function isCollapsed(stageInner) {
   const aside = stageInner.querySelector(".wgu-block-flexible-content__aside");
   if (aside) return getComputedStyle(aside).float === "none";
   const stage = stageInner.closest(".stage");
-  return containerWidth(stage) < 800; // 50rem threshold
+  return containerWidth(stage) < 640; // 40rem threshold
 }
 
 function computeTriggers(rows, stageInner, glyphPx) {
@@ -406,10 +499,11 @@ function computeTriggers(rows, stageInner, glyphPx) {
   if (asideRows.length) {
     t.add("aside");
     if (!collapsed) t.add("aside-desktop");
+    if (collapsed) t.add("aside-collapsed"); // the "wrap disappears" rule only
+                                             // makes sense when there IS a wrap
     asideRows.forEach((r) => {
       if (r.aside.kind === "image") t.add("image-aside");
       if (r.aside.kind === "callout") t.add("callout-aside");
-      if (r.aside.size === "large") { /* floor candidate handled below */ }
     });
   }
   // portrait: the portrait-crop preset uses PHOTOS.portrait, whose SVG label
@@ -432,12 +526,12 @@ function computeTriggers(rows, stageInner, glyphPx) {
   // narrow measure floor: min narrow across aside rows (worst case).
   let minNarrow = Infinity;
   asideRows.forEach((r) => {
-    const narrow = ZONES.measure - ZONES.gutter - (OVERLAP[r.aside.size] || 15);
+    const narrow = ZONES.measure - ZONES.gutter - (OVERLAP[r.aside.size] || 12);
     minNarrow = Math.min(minNarrow, narrow);
   });
   if (isFinite(minNarrow)) {
     t.narrowCh = minNarrow;
-    if (minNarrow <= 45) t.add("measure-floor");
+    if (minNarrow <= 35) t.add("measure-floor"); // 35ch = the calibrated floor
   }
 
   // tall aside → whitespace below (runtime): compare aside height to its text.
@@ -454,7 +548,7 @@ function computeTriggers(rows, stageInner, glyphPx) {
 /* ============================================================================
  * INSPECTOR OVERLAYS
  * ==========================================================================*/
-function drawOverlays(overlay, stageInner, glyphPx, opts) {
+function drawOverlays(overlay, stageInner, glyphPx, avgChar, opts) {
   overlay.replaceChildren();
   const block = stageInner.querySelector(".wgu-block");
   if (!block) return;
@@ -462,38 +556,37 @@ function drawOverlays(overlay, stageInner, glyphPx, opts) {
   const blockRect = block.getBoundingClientRect();
   const x0 = blockRect.left - innerRect.left;   // block left within the overlay
   const collapsed = opts.trig.has("collapsed");
+  const realCh = (ch) => Math.round((ch * glyphPx) / avgChar); // ch → real chars
 
   // -- Grid tracks + margin --
   if (opts.grid && !collapsed) {
     const track = x0;
     const measure = x0 + ZONES.leftTrack * glyphPx;
     const margin = measure + ZONES.measure * glyphPx;
-    zone(overlay, "track",   track,   ZONES.leftTrack * glyphPx, "left track · 7ch");
-    zone(overlay, "measure", measure, ZONES.measure * glyphPx, "text column · 65ch");
-    zone(overlay, "margin",  margin,  ZONES.marginArea * glyphPx, "margin · 15ch");
+    zone(overlay, "track",   track,   ZONES.leftTrack * glyphPx, `left track ${ZONES.leftTrack}ch`);
+    zone(overlay, "measure", measure, ZONES.measure * glyphPx, `text column ${ZONES.measure}ch`);
+    zone(overlay, "margin",  margin,  ZONES.marginArea * glyphPx, `margin ${ZONES.marginArea}ch`);
   } else if (opts.grid && collapsed) {
     const label = h("div", "overlay__zone-label", "collapsed — single column, no tracks");
     label.style.top = "4px"; label.style.left = x0 + "px"; label.style.position = "absolute";
     overlay.appendChild(label);
   }
 
-  // -- Measure guide --
+  // -- Measure guide -- labels report REAL characters, not nominal ch.
   if (opts.measure) {
     if (!collapsed) {
       const measureLeft = x0 + ZONES.leftTrack * glyphPx;
-      // wide measure right edge (65ch)
-      guide(overlay, measureLeft + ZONES.measure * glyphPx, `wide measure 65ch (≈${Math.round(ZONES.measure * glyphPx)}px)`, false);
-      // narrow measure (if asides present)
+      guide(overlay, measureLeft + ZONES.measure * glyphPx,
+        `wide measure ${ZONES.measure}ch ≈ ${realCh(ZONES.measure)} chars`, false);
       if (isFinite(opts.trig.narrowCh)) {
         const narrow = opts.trig.narrowCh;
-        const x = measureLeft + narrow * glyphPx;
-        const fail = narrow < 45;
-        guide(overlay, x, `narrow measure ${narrow}ch ${fail ? "✕ below floor" : "✓ ≥ 45ch floor"}`, fail);
+        const fail = narrow < 35;                    // 35ch = calibrated floor
+        guide(overlay, measureLeft + narrow * glyphPx,
+          `narrow measure ${narrow}ch ≈ ${realCh(narrow)} chars ${fail ? "✕ below floor" : "✓ ≥ 35ch floor"}`, fail);
       }
     } else {
-      // collapsed: text returns to full measure; show a single note
-      const measureLeft = x0;
-      guide(overlay, measureLeft + ZONES.measure * glyphPx, "collapsed — full measure, wrap off", false);
+      guide(overlay, x0 + ZONES.measure * glyphPx,
+        `collapsed — full measure ≈ ${realCh(ZONES.measure)} chars, wrap off`, false);
     }
   }
 }
@@ -516,24 +609,18 @@ function guide(overlay, left, label, fail) {
 /* ============================================================================
  * SPEC PANEL RENDER + HIGHLIGHT
  * ==========================================================================*/
-function renderSpec(body, rows, triggersFn) {
+/* Builds the static parts (markup, decision log) and an empty rules container,
+ * which updateRules() then fills with ONLY the rules active in the current
+ * configuration. Returns the rules container so layout() can refresh it as the
+ * live geometry (collapse state, tall aside) changes the active set. */
+function renderSpec(body, rows) {
   body.replaceChildren();
 
-  // Rules
+  // Rules (filled by updateRules)
   const s1 = h("div", "spec__section");
-  s1.appendChild(h("h3", null, "Rules in this configuration"));
-  RULES.forEach((r) => {
-    const el = h("div", "rule");
-    el.dataset.triggers = (r.triggers || []).join(",");
-    if (r.always) el.dataset.always = "1";
-    const head = h("div", "rule__head");
-    head.appendChild(h("span", "rule__id mono", r.id));
-    head.appendChild(h("span", "rule__title", r.title));
-    el.appendChild(head);
-    el.appendChild(h("p", null, r.body));
-    el.querySelector("p").style.margin = "6px 0 0";
-    s1.appendChild(el);
-  });
+  s1.appendChild(h("h3", null, "Active rules"));
+  const rulesEl = h("div", "rules");
+  s1.appendChild(rulesEl);
   body.appendChild(s1);
 
   // Markup
@@ -556,15 +643,27 @@ function renderSpec(body, rows, triggersFn) {
   });
   body.appendChild(s3);
 
-  highlightRules(body, triggersFn());
+  return rulesEl;
 }
 
-function highlightRules(body, trig) {
-  body.querySelectorAll(".rule").forEach((el) => {
-    const keys = (el.dataset.triggers || "").split(",").filter(Boolean);
-    const active = el.dataset.always === "1" || keys.some((k) => trig.has(k));
-    el.classList.toggle("is-active", active);
+/* Render ONLY the rules the current configuration triggers (§5.2). The list
+ * changes as you switch presets or resize. */
+function updateRules(container, trig) {
+  if (!container) return;
+  const active = RULES.filter((r) => r.always || (r.triggers || []).some((k) => trig.has(k)));
+  container.replaceChildren();
+  active.forEach((r) => {
+    const el = h("div", "rule");
+    const head = h("div", "rule__head");
+    head.appendChild(h("span", "rule__id mono", r.id));
+    head.appendChild(h("span", "rule__title", r.title));
+    el.appendChild(head);
+    const p = h("p", null, r.body);
+    p.style.margin = "6px 0 0";
+    el.appendChild(p);
+    container.appendChild(el);
   });
+  if (!active.length) container.appendChild(h("p", "rules__empty", "No layout rules apply to this configuration."));
 }
 
 /* Boot */

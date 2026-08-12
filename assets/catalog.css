@@ -12,35 +12,43 @@
  * ==========================================================================*/
 
 :root {
-  /* Chrome surfaces — two distinct planes (§9). */
-  --c-chrome:   #eceef0;   /* app background: panels/chrome sit on this        */
-  --c-panel:    #f7f8f9;   /* control + spec panel fill                        */
-  --c-panel-2:  #ffffff;   /* raised elements (cards, inputs)                  */
-  --c-stage:    #ffffff;   /* the STAGE — same surface as the course reading   */
+  /* TWO SURFACES ONLY (§9). Everything chrome sits on one grey; the stage —
+   * and specimen previews / code, which are "content" surfaces — sit on white.
+   * No third panel fill: raised/hover state is a subtle tint + borders, never a
+   * new plane. */
+  --c-chrome:   #eaecef;   /* the chrome surface: app bg + header + rail + spec + cards */
+  --c-stage:    #ffffff;   /* the content surface: stage, previews, code       */
+  --c-raise:    #f3f4f6;   /* hover tint within the chrome (interaction, not a surface) */
 
-  /* Ink */
-  --c-ink:      #1b1e22;
-  --c-ink-2:    #4a5057;   /* secondary text                                   */
-  --c-muted:    #7c838b;   /* labels, meta                                     */
+  /* Ink — bumped for contrast; --c-muted was too light. */
+  --c-ink:      #191c20;
+  --c-ink-2:    #3d444c;   /* secondary text                                   */
+  --c-muted:    #5c636d;   /* labels, meta                                     */
 
   /* Lines */
-  --c-line:     #dcdfe3;
-  --c-line-2:   #c7ccd1;
+  --c-line:     #d3d7dc;
+  --c-line-2:   #bcc2c9;
 
   /* The single restrained accent — a neutral charcoal, NOT a brand colour.
    * Used only for interactive state (selected preset, active toggle, focus). */
   --c-accent:   #2f333a;
   --c-accent-ink: #ffffff;
-  --c-focus:    #8a9bb3;   /* focus ring: desaturated, clearly non-brand       */
+  --c-focus:    #6f7f99;   /* focus ring: desaturated, clearly non-brand       */
 
-  /* Type registers (§9): sans for chrome, MONO for anything technical
-   * (measurements, class names, markup, rule references). Neither is a brand
-   * font — the register shift makes spec vs course content unmistakable. */
+  /* Type registers (§9): sans for ALL labels/prose; MONO reserved strictly for
+   * technical values — measurements (px, ch, chars), class names, markup, and
+   * rule references. The register shift marks spec vs course content. */
   --c-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --c-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  --c-radius: 6px;
+  /* One border + radius system. */
+  --c-radius:    8px;   /* panels, cards, code, the stage                       */
+  --c-radius-sm: 5px;   /* small controls: chips, toggles, preset rows          */
   --c-gap: 24px;
+
+  /* Back-compat aliases so existing rules resolve to the two-surface model. */
+  --c-panel:   var(--c-chrome);
+  --c-panel-2: var(--c-chrome);
 }
 
 * { box-sizing: border-box; }
@@ -83,7 +91,8 @@ button { font-family: inherit; }
   align-items: center;
   gap: 10px;
 }
-.topbar__brand .mono { color: var(--c-muted); font-weight: 400; font-size: 12px; }
+/* The "WGU · OpenCraft" tag is a label, not a technical value → sans. */
+.topbar__brand .mono { color: var(--c-muted); font-weight: 400; font-size: 12px; font-family: var(--c-sans); }
 .topbar__spacer { flex: 1; }
 
 /* Standing proposal indicator (§11) — quiet, persistent, never in the way. */
@@ -91,10 +100,8 @@ button { font-family: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--c-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--c-ink-2);
-  background: var(--c-panel-2);
   border: 1px solid var(--c-line);
   border-radius: 999px;
   padding: 5px 12px;
@@ -106,8 +113,7 @@ button { font-family: inherit; }
 }
 
 .back-link {
-  font-family: var(--c-mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--c-ink-2);
   text-decoration: none;
 }
@@ -157,8 +163,7 @@ button { font-family: inherit; }
  * status must be obvious at a glance. Kept low-saturation. */
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--c-mono);
-  font-size: 11px; font-weight: 500;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
   padding: 3px 9px;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -175,66 +180,78 @@ button { font-family: inherit; }
  * ==========================================================================*/
 .detail { display: flex; flex-direction: column; min-height: calc(100vh - 53px); }
 
+/* Compact header — the specimen, not the chrome, should own the height. */
 .detail__header {
-  padding: 28px 32px 20px;
+  padding: 12px 24px;
   border-bottom: 1px solid var(--c-line);
   background: var(--c-panel);
 }
-.detail__title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.detail__title { font-size: 22px; letter-spacing: -0.02em; margin: 0; }
-.detail__framing {
-  max-width: 90ch;
-  margin-top: 12px;
-  color: var(--c-ink-2);
-  font-size: 13px;
+.detail__title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.detail__title { font-size: 17px; letter-spacing: -0.02em; margin: 0; }
+
+/* Framing: one-line summary that expands for the full nuance (§ proportion). */
+.framing { font-size: 13px; color: var(--c-ink-2); min-width: 0; }
+.framing > summary {
+  cursor: pointer; list-style: none; color: var(--c-ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.detail__framing strong { color: var(--c-ink); font-weight: 600; }
+.framing > summary::-webkit-details-marker { display: none; }
+.framing > summary strong { color: var(--c-ink); font-weight: 600; }
+.framing__hint {
+  font-family: var(--c-mono); font-size: 10px; color: var(--c-muted);
+  border: 1px solid var(--c-line); border-radius: 4px; padding: 0 5px; margin-left: 4px;
+}
+.framing[open] > summary { white-space: normal; }
+.framing > p { margin: 8px 0 0; max-width: 90ch; }
+.framing > p em { color: var(--c-ink); font-style: italic; }
 
 /* The working area: controls rail | stage | spec panel. */
 .workbench {
   display: grid;
-  grid-template-columns: 264px minmax(0, 1fr) 360px;
+  grid-template-columns: 208px minmax(0, 1fr) 300px;
   flex: 1;
   min-height: 0;
 }
-.workbench.is-spec-collapsed { grid-template-columns: 264px minmax(0, 1fr) 44px; }
+.workbench.is-spec-collapsed { grid-template-columns: 208px minmax(0, 1fr) 34px; }
 
 /* ---- Controls rail (Content configuration + Inspector) ---- */
 .rail {
   border-right: 1px solid var(--c-line);
   background: var(--c-panel);
-  padding: 20px 18px;
+  padding: 14px 12px;
   overflow-y: auto;
 }
-.rail__section + .rail__section { margin-top: 28px; }
+.rail__section + .rail__section { margin-top: 20px; }
 .rail__label {
-  font-family: var(--c-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--c-muted);
-  margin: 0 0 12px;
+  margin: 0 0 10px;
 }
 
-.preset-group + .preset-group { margin-top: 16px; }
+.preset-group + .preset-group { margin-top: 12px; }
 .preset-group__name {
-  font-size: 11px; font-weight: 600; color: var(--c-ink-2);
-  margin: 0 0 6px;
+  font-size: 10.5px; font-weight: 600; color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  margin: 0 0 5px;
 }
 .preset {
   display: block;
   width: 100%;
   text-align: left;
-  background: var(--c-panel-2);
-  border: 1px solid var(--c-line);
-  border-radius: var(--c-radius);
-  padding: 9px 11px;
-  margin-bottom: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--c-radius-sm);
+  padding: 5px 8px;
+  margin-bottom: 2px;
   cursor: pointer;
-  color: var(--c-ink);
-  font-size: 13px;
+  color: var(--c-ink-2);
+  font-size: 12.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.preset:hover { border-color: var(--c-line-2); }
+.preset:hover { background: var(--c-raise); color: var(--c-ink); }
 .preset:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 1px; }
 .preset[aria-pressed="true"] {
   background: var(--c-accent);
@@ -242,7 +259,6 @@ button { font-family: inherit; }
   color: var(--c-accent-ink);
 }
 .preset__name { font-weight: 500; }
-.preset__desc { display: none; } /* description shown in the stage caption bar */
 
 /* Inspector toggles */
 .toggle {
@@ -285,24 +301,40 @@ button { font-family: inherit; }
 .stage-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-family: var(--c-mono);
-  font-size: 12px;
+  gap: 18px;
+  font-size: 13px;
   color: var(--c-ink-2);
 }
-.stage-toolbar__width { color: var(--c-ink); }
-.stage-toolbar__preset { color: var(--c-muted); }
+.stage-toolbar__spacer { flex: 1; }
+/* Readouts: label in plain type, technical VALUE in mono (bold <b>). */
+.readout { color: var(--c-ink-2); }
+.readout .mono { color: var(--c-ink); font-weight: 600; }
+.readout--mode {
+  font-size: 12px;
+  color: var(--c-ink-2);
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+.readout--mode.is-collapsed { color: var(--c-accent); }
+.stage-caption { margin: 0; color: var(--c-ink-2); font-size: 13px; max-width: 70ch; }
+
 .stage-presets { display: flex; gap: 6px; }
 .stage-presets button {
-  font-family: var(--c-mono); font-size: 11px;
-  border: 1px solid var(--c-line); background: var(--c-panel-2);
-  border-radius: 4px; padding: 3px 8px; cursor: pointer; color: var(--c-ink-2);
+  font-size: 12px;
+  border: 1px solid var(--c-line); background: transparent;
+  border-radius: var(--c-radius-sm); padding: 4px 10px; cursor: pointer; color: var(--c-ink-2);
 }
-.stage-presets button:hover { border-color: var(--c-line-2); color: var(--c-ink); }
+.stage-presets button:hover { border-color: var(--c-line-2); background: var(--c-raise); color: var(--c-ink); }
 
-/* The resizable frame. THIS is the query container: the block's @container and
- * cqw resolve against this element's inline size, so the drag handle drives the
- * block's responsive behaviour directly (§5.2). */
+/* Stage + drag handle sit in a flex frame. */
+.stage-frame { display: flex; align-items: stretch; }
+
+/* The stage IS the query container: the block's @container and cqw resolve
+ * against this element's inline size, so the drag handle drives the block's
+ * responsive behaviour directly (§5.2). Not capped to its column
+ * (max-width:none) — the .stage-wrap scrolls if the stage is dragged wider than
+ * the available space. */
 .stage {
   container-type: inline-size;
   container-name: stage;
@@ -310,30 +342,39 @@ button { font-family: inherit; }
   background: var(--c-stage);
   border: 1px solid var(--c-line);
   border-radius: var(--c-radius);
-  /* Default wide enough to show the desktop float layout immediately. The
-   * stage is NOT capped to its column (max-width:none): the .stage-wrap around
-   * it scrolls when the stage is wider than the available space, so the drag
-   * handle can grow the specimen past the panels and shrink it to watch the
-   * layout collapse. */
   width: 900px;
   max-width: none;
   min-width: 280px;
-  /* native resize handle on the right edge; JS reports the width live */
-  resize: horizontal;
+  flex: none;        /* hold the set width in the flex frame; the wrap scrolls */
   overflow: auto;
   padding: 40px 32px;
 }
 .stage__inner { position: relative; }
 
-/* Generous space + a hint that the frame is draggable. */
-.stage::after {
-  content: "";
-  position: absolute;
-  right: 3px; top: 50%; transform: translateY(-50%);
-  width: 4px; height: 40px; border-radius: 2px;
-  background: var(--c-line-2);
-  pointer-events: none;
+/* Custom drag handle — a full-height edge grip, driven by Pointer Events in JS
+ * (mouse + trackpad). Replaces the unreliable native resize corner. */
+.stage__handle {
+  flex: none;
+  width: 12px;
+  align-self: stretch;
+  margin-left: 8px;
+  border-radius: var(--c-radius);
+  background: var(--c-line);
+  cursor: ew-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;      /* let Pointer Events drive it on trackpad/touch */
+  user-select: none;
 }
+.stage__handle::before {
+  content: "";
+  width: 2px; height: 26px; border-radius: 1px;
+  background: var(--c-muted);
+}
+.stage__handle:hover,
+.stage__handle.is-dragging { background: var(--c-line-2); }
+.stage__handle.is-dragging::before { background: var(--c-accent); }
 
 /* ============================================================================
  * INSPECTOR OVERLAYS (§5.2)
@@ -385,11 +426,11 @@ button { font-family: inherit; }
   border-left: 1px solid rgba(80,120,200,0.7);
 }
 .overlay__guide-label {
-  position: absolute; top: 8px; left: 6px;
+  position: absolute; top: 30px; left: 6px;   /* sits below the zone labels */
   font-family: var(--c-mono); font-size: 10px;
   white-space: nowrap;
   color: #2b3f66;
-  background: rgba(255,255,255,0.82);
+  background: rgba(255,255,255,0.86);
   padding: 1px 5px; border-radius: 3px;
 }
 .overlay__guide-label.is-fail { color: #a3271f; }
@@ -409,61 +450,69 @@ button { font-family: inherit; }
   border-bottom: 1px solid var(--c-line);
   position: sticky; top: 0; background: var(--c-panel);
 }
-.spec__bar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--c-muted); margin: 0; font-family: var(--c-mono); }
+.spec__bar h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-muted); margin: 0; }
 .spec__collapse {
-  border: 1px solid var(--c-line); background: var(--c-panel-2);
-  border-radius: 4px; width: 26px; height: 24px; cursor: pointer; color: var(--c-ink-2);
+  border: 1px solid var(--c-line); background: transparent;
+  border-radius: var(--c-radius-sm); width: 26px; height: 24px; cursor: pointer; color: var(--c-ink-2);
 }
+.spec__collapse:hover { background: var(--c-raise); color: var(--c-ink); }
 .is-spec-collapsed .spec__body { display: none; }
 .is-spec-collapsed .spec__bar h2 { display: none; }
-.is-spec-collapsed .spec__bar { justify-content: center; padding: 12px 6px; }
+.is-spec-collapsed .spec__bar { flex-direction: column; gap: 10px; padding: 12px 4px; }
+.is-spec-collapsed .spec__bar::after {
+  content: "SPEC";
+  writing-mode: vertical-rl;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.14em;
+  color: var(--c-muted);
+}
 
 .spec__body { padding: 16px 14px 40px; }
 .spec__section + .spec__section { margin-top: 22px; }
 .spec__section h3 {
-  font-family: var(--c-mono); font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.04em; color: var(--c-muted); margin: 0 0 10px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--c-muted); margin: 0 0 10px;
 }
 
-/* Rules list — the rule that the current configuration triggers is highlighted */
+/* Rules list — only the rules the current configuration triggers are shown.
+ * On the chrome surface with a border + accent edge; no separate fill. */
+.rules__empty { color: var(--c-ink-2); font-size: 13px; margin: 0; }
 .rule {
   border: 1px solid var(--c-line);
-  border-radius: var(--c-radius);
-  background: var(--c-panel-2);
-  padding: 10px 12px;
+  border-radius: var(--c-radius-sm);
+  background: transparent;
+  box-shadow: inset 3px 0 0 var(--c-accent);
+  padding: 10px 12px 10px 14px;
   margin-bottom: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--c-ink-2);
 }
 .rule__head { display: flex; gap: 8px; align-items: baseline; }
-.rule__id { font-family: var(--c-mono); font-size: 11px; color: var(--c-muted); flex: none; }
-.rule__title { font-weight: 600; color: var(--c-ink); font-size: 12.5px; }
-.rule.is-active {
-  border-color: var(--c-accent);
-  box-shadow: inset 3px 0 0 var(--c-accent);
-}
-.rule.is-active .rule__id { color: var(--c-ink); }
+.rule__id { font-family: var(--c-mono); font-size: 11px; color: var(--c-ink); flex: none; }
+.rule__title { font-weight: 600; color: var(--c-ink); font-size: 13px; }
 
-/* Markup block */
+/* Markup block — on the content (white) surface, not a third dark plane.
+ * Monospace here is correct: it is code. */
 .markup {
   font-family: var(--c-mono);
   font-size: 11.5px;
-  line-height: 1.55;
-  background: #1b1e22;
-  color: #e6e8ea;
-  border-radius: var(--c-radius);
+  line-height: 1.6;
+  background: var(--c-stage);
+  color: var(--c-ink);
+  border: 1px solid var(--c-line);
+  border-radius: var(--c-radius-sm);
   padding: 12px;
   overflow-x: auto;
   white-space: pre;
   tab-size: 2;
 }
-.markup .tag { color: #9cdcff; }
-.markup .cls { color: #a7d78a; }
-.markup .cm  { color: #7c838b; }
+/* Light-surface syntax colours (restrained, readable on white). */
+.markup .tag { color: #0b5cad; }
+.markup .cls { color: #1a7f37; }
+.markup .cm  { color: var(--c-muted); }
 
 /* Decision log */
-.decision { font-size: 12.5px; color: var(--c-ink-2); margin-bottom: 14px; }
-.decision h4 { font-size: 12.5px; color: var(--c-ink); margin: 0 0 4px; }
+.decision { font-size: 13px; color: var(--c-ink-2); margin-bottom: 14px; }
+.decision h4 { font-size: 13px; color: var(--c-ink); margin: 0 0 4px; }
 
 /* ============================================================================
  * RESPONSIVE — the CHROME itself. On smaller screens the rail and spec panel

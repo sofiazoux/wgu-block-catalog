@@ -225,11 +225,11 @@ const PRESETS = [
   /* ---------- Happy path ---------- */
   {
     id: "prose", group: "Happy path", label: "Plain prose",
-    description: "No side elements. Full 65ch measure throughout.",
+    description: "No side elements. Full reading measure throughout.",
     content: [h2("What shapes behaviour"), p(T.long), p(T.med), p(T.xlong)],
   },
   {
-    id: "image-mid", group: "Happy path", label: "Image anchored mid-document",
+    id: "image-mid", group: "Happy path", label: "Image, wrapping",
     description: "A medium image anchored to a substantive passage; text wraps.",
     content: [
       h2("What shapes behaviour"), p(T.long),
@@ -238,7 +238,7 @@ const PRESETS = [
     ],
   },
   {
-    id: "callout-mid", group: "Happy path", label: "Callout anchored mid-document",
+    id: "callout-mid", group: "Happy path", label: "Callout, wrapping",
     description: "A callout in the side slot instead of an image; text wraps.",
     content: [
       h2("What shapes behaviour"), p(T.long),
@@ -256,19 +256,19 @@ const PRESETS = [
     ],
   },
   {
-    id: "media-wide", group: "Happy path", label: "Wide media between paragraphs",
+    id: "media-wide", group: "Happy path", label: "Wide media",
     description: "Media spanning the text column plus the margin area.",
     content: [p(T.long), media("wide", PHOTOS.wide, "Wide media reaches into the right margin."), p(T.long)],
   },
   {
-    id: "media-bleed", group: "Happy path", label: "Full-bleed media between paragraphs",
+    id: "media-bleed", group: "Happy path", label: "Full-bleed media",
     description: "Media breaking the container, edge to edge of the stage.",
     content: [p(T.long), media("bleed", PHOTOS.bleed, "A full-bleed band breaks the reading container."), p(T.long)],
   },
 
   /* ---------- Edge cases ---------- */
   {
-    id: "tall-aside", group: "Edge cases", label: "Side element taller than its group",
+    id: "tall-aside", group: "Edge cases", label: "Tall side element",
     description: "A large image beside one short paragraph → whitespace below the text. Accepted trade-off (§10).",
     content: [
       h2("A short passage"),
@@ -287,7 +287,7 @@ const PRESETS = [
     ],
   },
   {
-    id: "anchor-before-heading", group: "Edge cases", label: "Anchor immediately before a heading",
+    id: "anchor-before-heading", group: "Edge cases", label: "Anchor before heading",
     description: "The row breaks at the heading → the anchored group holds just one paragraph.",
     content: [
       h2("First section"),
@@ -296,12 +296,12 @@ const PRESETS = [
     ],
   },
   {
-    id: "anchor-near-end", group: "Edge cases", label: "Anchor near the end of the block",
+    id: "anchor-near-end", group: "Edge cases", label: "Anchor near end",
     description: "The forward extension runs out of content → a short trailing group.",
     content: [h2("Nearly done"), p(T.long), p(T.med), anchorImage(T.short, { src: PHOTOS.landscape, size: "medium", caption: "Only a short tail follows." })],
   },
   {
-    id: "portrait-crop", group: "Edge cases", label: "Portrait image in a side slot",
+    id: "portrait-crop", group: "Edge cases", label: "Portrait → cropped",
     description: "A 3:4 portrait dropped into the 4:3 slot → cropped by the container, never grown tall (§6.3).",
     content: [
       h2("The container imposes the ratio"),
@@ -310,16 +310,16 @@ const PRESETS = [
     ],
   },
   {
-    id: "measure-floor", group: "Edge cases", label: "Narrow measure at its floor",
-    description: "The largest image size drives the narrow measure to exactly 45ch — the governing floor (§6.1). Turn on the measure guide.",
+    id: "measure-floor", group: "Edge cases", label: "Measure at floor",
+    description: "The largest image size drives the narrow measure to exactly its 35ch floor (§6.1). Turn on the measure guide.",
     content: [
-      h2("At the 45ch floor"),
+      h2("At the 35ch floor"),
       anchorImage(T.xlong, { src: PHOTOS.landscape, size: "large", caption: "Largest size → narrow measure sits on the floor." }),
       p(T.long),
     ],
   },
   {
-    id: "length-extremes", group: "Edge cases", label: "Very short / very long paragraphs",
+    id: "length-extremes", group: "Edge cases", label: "Short / long paragraphs",
     description: "A long run with no anchors, plus very short and very long paragraphs.",
     content: [
       h2("Length extremes"),

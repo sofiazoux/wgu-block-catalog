@@ -7,24 +7,30 @@
  * translation of it. Read it top to bottom.
  *
  * THE GOVERNING CONSTRAINT (§6.1): when text sits beside a side element the
- * "narrow measure" must never drop below 45ch. Everything about the widths
+ * "narrow measure" must never drop below its floor. Everything about the widths
  * below is arranged, in ch units, so that floor holds by construction — you
  * cannot author your way under it. The catalog's measure guide (inspector)
- * reports the live character count so you can verify it.
+ * reports the live REAL character count so you can verify it.
+ *
+ * A NOTE ON THE NUMBERS: the spec framed the measure as 65ch wide / 45ch floor,
+ * but ch (the "0" glyph) overstates real line length by ~1.35× in Lato — 65ch
+ * renders ~87 characters. The zones below are therefore CALIBRATED to real
+ * characters: 51ch ≈ 68 real chars wide, 35ch ≈ 47 real chars at the floor,
+ * scaled to preserve the spec's 65:45 wide:narrow ratio.
  *
  * LAYOUT MODEL — a single centered column, three horizontal zones:
  *
- *   |<-- left-track -->|<---------- measure (65ch) ---------->|<-- margin -->|
- *   [ headings outdent ][ body text column                    ][ asides bleed]
+ *   |<-- left-track -->|<--------- measure (51ch) --------->|<-- margin -->|
+ *   [ headings outdent ][ body text column                  ][ asides bleed ]
  *
  *   - left-track  : structural air on the left that ONLY headings reach into,
  *                   via a negative margin (the "outdent", §6.4).
- *   - measure     : the body text column. Wide measure target 65ch (§6.1).
+ *   - measure     : the body text column. Wide measure 51ch ≈ 68 real chars.
  *   - margin-area : structural air on the right that floated asides bleed into
  *                   with a negative right margin (§6.2).
  *
  * All three zones are expressed in ch and applied on elements rendered in the
- * body font (Lato 16px), so 1ch is the same width everywhere (~8px) and the
+ * body font (Lato 16px), so 1ch is the same width everywhere (~9.3px) and the
  * arithmetic is honest.
  *
  * RESPONSIVE (§6.7): the float layout is opt-IN via a container query on the
@@ -35,18 +41,30 @@
  * ==========================================================================*/
 
 .wgu-block-flexible-content {
-  /* --- The three horizontal zones (ch, resolved in the Lato 16px context) ---
-   * NOTE ON ch: Lato's digit advance is wide (~0.58em), so 1ch ≈ 9.3px at
-   * 16px. The block's natural width is therefore (6+65+14)ch ≈ 790px; the
-   * container query below only enables the float layout once the stage is
-   * actually that wide, so the margin area always has room for the bleed. */
-  --fc-measure: 65ch;        /* wide measure target (range 62–68ch, §6.1)      */
-  --fc-left-track: 6ch;      /* left track for heading outdents                */
-  --fc-margin-area: 14ch;    /* right margin asides bleed into (holds max 13ch)*/
+  /* --- The three horizontal zones, in ch (resolved in the Lato 16px body) ---
+   * IMPORTANT — ch vs real characters: the ch unit is the advance of the "0"
+   * glyph, which in Lato is ~1.35× the average character width. So a measure
+   * authored as "65ch" actually renders ~87 characters — far past a readable
+   * line. These zone values are therefore CALIBRATED to real characters, not
+   * to nominal ch:
+   *
+   *     wide measure   51ch  ≈ 68 real characters   (target 65–75)
+   *     narrow floor   35ch  ≈ 47 real characters   (was 45ch; scaled to keep
+   *                                                   the 65:45 wide:narrow ratio)
+   *
+   * The catalog's measure guide reports the LIVE real-character count of the
+   * longest rendered line so this stays honest.
+   *
+   * Natural block width = (5+51+11)ch ≈ 622px; the container query enables the
+   * float layout only once the stage is at least that wide, so the margin area
+   * always has room for the bleed. */
+  --fc-measure: 51ch;        /* wide measure — ≈68 real chars (§6.1)           */
+  --fc-left-track: 5ch;      /* left track for heading outdents                */
+  --fc-margin-area: 11ch;    /* right margin asides bleed into (holds max 10ch)*/
 
   /* --- Float mechanics (§6.2). Named exactly as in the spec snippet. -------- */
-  --gutter: 3ch;             /* clear space between text and the floated aside */
-  --outdent: 2ch;            /* heading horizontal offset — deliberately small */
+  --gutter: 2ch;             /* clear space between text and the floated aside */
+  --outdent: 1.5ch;          /* heading horizontal offset — deliberately small */
 
   /* Full width of the centered column = the three zones summed. */
   --fc-container: calc(var(--fc-left-track) + var(--fc-measure) + var(--fc-margin-area));
@@ -99,8 +117,8 @@
 .wgu-block-flexible-content p {
   font-size: var(--pgn-wgu-size-body-16);
   line-height: var(--pgn-wgu-line-height-body-16);
-  /* Hyphenation is left OFF: the 45ch floor is what keeps the rag even; we do
-   * not lean on hyphenation to rescue a too-narrow measure. */
+  /* Hyphenation is left OFF: the narrow-measure floor is what keeps the rag
+   * even; we do not lean on hyphenation to rescue a too-narrow measure. */
 }
 .wgu-block-flexible-content ul,
 .wgu-block-flexible-content ol {
@@ -188,12 +206,12 @@
  * block is a plain single column, which is the whole point of §6.7: reading
  * order is the DOM order, no reshuffling.
  *
- * Threshold 50rem (800px): the block's natural width is (6+65+14)ch ≈ 790px at
+ * Threshold 40rem (640px): the block's natural width is (5+51+11)ch ≈ 622px at
  * Lato 16px, so below this the float layout would not fit without the asides
  * spilling out of the margin area. Keeping the threshold at the true footprint
  * means the collapse is clean — the layout never overflows in the transition.
  * ==========================================================================*/
-@container stage (min-width: 50rem) {
+@container stage (min-width: 40rem) {
 
   /* Text/aside rows sit after the left track and are capped at the measure. */
   .wgu-block-flexible-content__row {
@@ -225,19 +243,19 @@
 
   /* CLOSED SET OF IMAGE SIZES (decision log §10): image width is NOT free-form,
    * because it determines the narrow measure. Three sizes, each chosen so
-   *   narrow = 65ch − gutter(3ch) − overlap ≥ 45ch, i.e. overlap ≤ 17ch.
+   *   narrow = measure(51ch) − gutter(2ch) − overlap ≥ 35ch, i.e. overlap ≤ 14ch.
    *
-   *   size    aside-width   overlap   narrow measure   bleed into margin
-   *   small       20ch        12ch        50ch               8ch
-   *   medium      26ch        15ch        47ch              11ch
-   *   large       30ch        17ch        45ch (FLOOR)      13ch
+   *   size    aside-width   overlap   narrow measure        bleed into margin
+   *   small       16ch        10ch     39ch ≈ 52 real chars      6ch
+   *   medium      20ch        12ch     37ch ≈ 50 real chars      8ch
+   *   large       24ch        14ch     35ch ≈ 47 real chars     10ch  (FLOOR)
    *
-   * The large size deliberately sits the narrow measure exactly on the 45ch
-   * floor — that is the "narrow measure at its floor" edge case (§8).
-   * The margin-area (15ch) is sized to hold the largest bleed (13ch). */
-  .wgu-block-flexible-content__aside--size-small  { --aside-width: 20ch; --aside-overlap: 12ch; }
-  .wgu-block-flexible-content__aside--size-medium { --aside-width: 26ch; --aside-overlap: 15ch; }
-  .wgu-block-flexible-content__aside--size-large  { --aside-width: 30ch; --aside-overlap: 17ch; }
+   * The large size deliberately sits the narrow measure exactly on the floor —
+   * that is the "narrow measure at its floor" edge case (§8).
+   * The margin-area (11ch) is sized to hold the largest bleed (10ch). */
+  .wgu-block-flexible-content__aside--size-small  { --aside-width: 16ch; --aside-overlap: 10ch; }
+  .wgu-block-flexible-content__aside--size-medium { --aside-width: 20ch; --aside-overlap: 12ch; }
+  .wgu-block-flexible-content__aside--size-large  { --aside-width: 24ch; --aside-overlap: 14ch; }
 
   /* MEDIA WIDTHS (§6.5) — each media row reaches a different set of zones.
    * media-wide: text column + margin area (not the left track). */
