@@ -16,9 +16,9 @@
    * and specimen previews / code, which are "content" surfaces — sit on white.
    * No third panel fill: raised/hover state is a subtle tint + borders, never a
    * new plane. */
-  --c-chrome:   #eaecef;   /* the chrome surface: app bg + header + rail + spec + cards */
+  --c-chrome:   #f4f5f7;   /* the chrome surface: app bg + header + rail + spec + cards */
   --c-stage:    #ffffff;   /* the content surface: stage, previews, code       */
-  --c-raise:    #f3f4f6;   /* hover tint within the chrome (interaction, not a surface) */
+  --c-raise:    #e8eaee;   /* hover tint within the chrome (interaction, not a surface) */
 
   /* Ink — bumped for contrast; --c-muted was too light. */
   --c-ink:      #191c20;
@@ -95,29 +95,15 @@ button { font-family: inherit; }
 .topbar__brand .mono { color: var(--c-muted); font-weight: 400; font-size: 12px; font-family: var(--c-sans); }
 .topbar__spacer { flex: 1; }
 
-/* Standing proposal indicator (§11) — quiet, persistent, never in the way. */
-.proposal-flag {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+/* Back-link sits above the detail title, in the same column. */
+.detail__back {
+  display: inline-block;
   font-size: 12px;
-  color: var(--c-ink-2);
-  border: 1px solid var(--c-line);
-  border-radius: 999px;
-  padding: 5px 12px;
-}
-.proposal-flag::before {
-  content: "";
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #c99a2e; /* amber dot = "pending" */
-}
-
-.back-link {
-  font-size: 13px;
-  color: var(--c-ink-2);
+  color: var(--c-muted);
   text-decoration: none;
+  margin-bottom: 6px;
 }
-.back-link:hover { color: var(--c-ink); }
+.detail__back:hover { color: var(--c-ink); }
 
 /* ============================================================================
  * CATALOG INDEX (§5.1)
@@ -197,10 +183,15 @@ button { font-family: inherit; }
 }
 .framing > summary::-webkit-details-marker { display: none; }
 .framing > summary strong { color: var(--c-ink); font-weight: 600; }
-.framing__hint {
-  font-family: var(--c-mono); font-size: 10px; color: var(--c-muted);
-  border: 1px solid var(--c-line); border-radius: 4px; padding: 0 5px; margin-left: 4px;
+/* Disclosure caret — the only affordance that the framing expands. */
+.framing > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--c-muted);
+  font-size: 10px;
 }
+.framing[open] > summary::before { content: "▾"; }
 .framing[open] > summary { white-space: normal; }
 .framing > p { margin: 8px 0 0; max-width: 90ch; }
 .framing > p em { color: var(--c-ink); font-style: italic; }
@@ -309,14 +300,6 @@ button { font-family: inherit; }
 /* Readouts: label in plain type, technical VALUE in mono (bold <b>). */
 .readout { color: var(--c-ink-2); }
 .readout .mono { color: var(--c-ink); font-weight: 600; }
-.readout--mode {
-  font-size: 12px;
-  color: var(--c-ink-2);
-  border: 1px solid var(--c-line);
-  border-radius: 999px;
-  padding: 2px 10px;
-}
-.readout--mode.is-collapsed { color: var(--c-accent); }
 .stage-caption { margin: 0; color: var(--c-ink-2); font-size: 13px; max-width: 70ch; }
 
 .stage-presets { display: flex; gap: 6px; }

@@ -54,24 +54,24 @@ function route() {
 window.addEventListener("hashchange", route);
 
 /* ============================================================================
- * TOP BAR — with the standing "proposal pending feedback" flag (§11).
+ * TOP BAR — global brand only. (The "proposal pending feedback" framing now
+ * lives in the detail header text; the standing chip was removed at the client's
+ * request.)
  * ==========================================================================*/
-function topbar(backToCatalog) {
+function topbar() {
   const bar = h("div", "topbar");
   const brand = h("a", "topbar__brand");
   brand.href = "#/";
   brand.innerHTML = `Block catalog <span class="mono">WGU · OpenCraft</span>`;
   bar.appendChild(brand);
-  if (backToCatalog) {
-    const back = h("a", "back-link", "← all blocks");
-    back.href = "#/";
-    bar.appendChild(back);
-  }
-  bar.appendChild(h("div", "topbar__spacer"));
-  const flag = h("span", "proposal-flag", "Proposal — pending feedback");
-  flag.title = "This catalog is a proposal. The authoring model shown is intent, not commitment; parts depend on open questions with OpenCraft.";
-  bar.appendChild(flag);
   return bar;
+}
+
+/* A "back to catalog" link, placed above a detail-view title. */
+function backLink() {
+  const back = h("a", "detail__back", "← all blocks");
+  back.href = "#/";
+  return back;
 }
 
 /* ============================================================================
@@ -79,7 +79,7 @@ function topbar(backToCatalog) {
  * ==========================================================================*/
 function renderCatalog() {
   app.replaceChildren();
-  app.appendChild(topbar(false));
+  app.appendChild(topbar());
 
   const wrap = h("div", "catalog");
   const lede = h("div", "catalog__lede");
@@ -151,7 +151,7 @@ function miniDeferredPreview() {
 function renderDetail(id) {
   const b = blockById(id);
   app.replaceChildren();
-  app.appendChild(topbar(true));
+  app.appendChild(topbar());
   if (!b.ready) return renderDeferredDetail(b);
 
   // ---- state ----
@@ -165,15 +165,17 @@ function renderDetail(id) {
 
   const detail = h("div", "detail");
 
-  // Header — compact. One-line framing that expands for the full nuance.
+  // Header — compact. Back-link sits above the title; one-line framing that
+  // expands for the full nuance.
   const header = h("div", "detail__header");
+  header.appendChild(backLink());
   const titleRow = h("div", "detail__title-row");
   titleRow.appendChild(h("h1", "detail__title", b.name));
   titleRow.appendChild(statusBadge(b.status, b.statusLabel));
   const framing = document.createElement("details");
   framing.className = "framing";
   framing.innerHTML =
-    '<summary><strong>Rendered proposal</strong> — the design and its rules, not an authoring tool. <span class="framing__hint">details</span></summary>' +
+    '<summary><strong>Rendered proposal</strong> — the design and its rules, not an authoring tool.</summary>' +
     '<p>It shows the design and the rules it obeys, not how authors produce it. Controls describe <em>states of the content</em>, not actions an author takes. Pending feedback from WGU and OpenCraft.</p>';
   titleRow.appendChild(framing);
   header.appendChild(titleRow);
@@ -225,7 +227,6 @@ function renderDetail(id) {
   const charReadout = h("span", "readout");
   charReadout.innerHTML = 'longest line <b class="mono">—</b> chars';
   const charValue = charReadout.querySelector("b");
-  const modeReadout = h("span", "readout readout--mode", "");
   const stagePresets = h("div", "stage-presets");
   [["Mobile", 360], ["Tablet", 760], ["Wide", 980]].forEach(([label, px]) => {
     const b2 = h("button", null, label);
@@ -235,7 +236,6 @@ function renderDetail(id) {
   });
   toolbar.appendChild(widthReadout);
   toolbar.appendChild(charReadout);
-  toolbar.appendChild(modeReadout);
   toolbar.appendChild(h("span", "stage-toolbar__spacer"));
   toolbar.appendChild(stagePresets);
   stageWrap.appendChild(toolbar);
@@ -347,10 +347,6 @@ function renderDetail(id) {
     const block = stageInner.querySelector(".wgu-block");
     const lc = block ? longestLineChars(block, avgChar) : 0;
     charValue.textContent = lc || "—";
-    // mode
-    const collapsed = trig.has("collapsed");
-    modeReadout.textContent = collapsed ? "collapsed" : "wrap on";
-    modeReadout.classList.toggle("is-collapsed", collapsed);
     drawOverlays(overlay, stageInner, glyphPx, avgChar, { grid: state.grid, measure: state.measure, rows: currentRows, trig });
     // rebuild the active-rules list (the active set depends on live geometry)
     updateRules(rulesEl, trig);
@@ -373,6 +369,7 @@ function renderDetail(id) {
 function renderDeferredDetail(b) {
   const detail = h("div", "detail");
   const header = h("div", "detail__header");
+  header.appendChild(backLink());
   const titleRow = h("div", "detail__title-row");
   titleRow.appendChild(h("h1", "detail__title", b.name));
   titleRow.appendChild(statusBadge(b.status, b.statusLabel));
