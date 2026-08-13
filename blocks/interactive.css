@@ -63,6 +63,19 @@
 }
 
 /* ----------------------------------------------------------------------------
+ * DEMO MODE — while the rail (content configuration + inspector + edge cases)
+ * and the spec panel are not yet client-ready, hide them and let the stage
+ * take the full workbench width so we can share the running block on Pages
+ * without exposing the WIP tooling. Toggle via DEMO_MODE in app.js.
+ * --------------------------------------------------------------------------*/
+.workbench--interactive-demo,
+.workbench--interactive-demo.is-spec-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workbench--interactive-demo > .rail,
+.workbench--interactive-demo > .spec { display: none; }
+
+/* ----------------------------------------------------------------------------
  * LAUNCH (in page, not modal) — §4.1
  * Rounded card on navy canvas: mint-tinted left panel (chip + intent + CTA)
  * and the illustration flushes the right edge with no gap.
@@ -197,8 +210,9 @@
   background: var(--pgn-wgu-background-light-gray);   /* fallback under screens */
 }
 
-/* ---- Top bar: absolute overlay on top of the sliding screens. Transparent
- * bg so each screen's own colour shows through it. --------------------------*/
+/* ---- Top bar: absolute overlay on top of the sliding screens. Mint bg so
+ * scrolling content underneath doesn't peek through, and the stepper pill
+ * always reads against a clean surface. ------------------------------------*/
 .wgu-block-interactive__topbar {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -206,7 +220,7 @@
   z-index: 3;
   display: flex;
   align-items: flex-start;
-  background: transparent;
+  background: var(--pgn-wgu-background-light-gray);
 }
 .wgu-block-interactive__topbar-name {
   flex: 1 1 0;
@@ -303,6 +317,10 @@
   flex-direction: column;
 }
 .wgu-block-interactive__screen > .wgu-block-interactive__content { flex: 1; }
+/* Synthesis lets the right (cover-image) column extend up behind the topbar. */
+.wgu-block-interactive__screen--synth {
+  padding-top: 0;
+}
 
 /* ---- Two-column content shell (§4.2/§4.3) ------------------------------- */
 .wgu-block-interactive__content {
@@ -420,7 +438,8 @@
 }
 .wgu-block-interactive__option {
   appearance: none; -webkit-appearance: none;
-  display: flex; align-items: stretch;
+  display: block;                              /* indicator lives absolute inside */
+  position: relative;
   width: 100%;
   padding: 0;
   border: none;
@@ -430,14 +449,15 @@
   filter: drop-shadow(0 10px 17.5px rgba(177, 188, 201, 0.3));
   transition: filter 200ms ease;
 }
+/* The right indicator (10 → 69) sits on top of the content via absolute
+ * positioning, and the content reserves 69px on the right so its text area
+ * never changes width between states — no line-count jump on hover. */
 .wgu-block-interactive__option-content {
-  flex: 1 1 0;
-  min-width: 0;
   min-height: 102px;
   display: flex; align-items: center;
-  padding: 16px 24px;
+  padding: 16px 93px 16px 24px;                /* right = 69 indicator + 24 gap */
   background: var(--pgn-wgu-background-pure-white);
-  border-radius: 8px 0 0 8px;
+  border-radius: 8px;
   font-family: var(--pgn-wgu-family-lato);
   font-weight: 400;
   font-size: 16px;
@@ -447,16 +467,16 @@
 }
 .wgu-block-interactive__option-text { flex: 1; }
 .wgu-block-interactive__option-indicator {
-  flex: none;
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
   width: 10px;
-  align-self: stretch;
-  min-height: 102px;
   background: var(--itv-chip);
   border-radius: 0 8px 8px 0;
   display: flex; align-items: center; justify-content: center;
   color: #fff;
   overflow: hidden;
   transition: width 180ms ease;
+  z-index: 1;
 }
 .wgu-block-interactive__option-arrow {
   display: flex; align-items: center; justify-content: center;
@@ -599,15 +619,176 @@
 .wgu-block-interactive__qual--custom.is-inline    { background: #e7f6f9; }
 
 /* ----------------------------------------------------------------------------
- * SYNTHESIS (§4.4)
+ * SYNTHESIS (§4.4) — Figma US-09/10/11
+ *
+ * Asymmetric layout: narrative on the LEFT (~760/1280 = 59.4%), cover image
+ * on the RIGHT (~520/1280 = 40.6%). The right column extends behind the
+ * (absolute) topbar and holds a takeaway card + Restart/Exit buttons pinned
+ * to the bottom over a mint gradient fade of the illustration.
  * --------------------------------------------------------------------------*/
-.wgu-block-interactive__content--synth { align-items: start; }
-.wgu-block-interactive__synth-para { font-size: var(--pgn-wgu-size-body-16); line-height: var(--pgn-wgu-line-height-body-16); margin: 0 0 var(--pgn-wgu-spacing-20); }
-.wgu-block-interactive__synth-sub { font-family: var(--pgn-wgu-family-sora); font-size: var(--pgn-wgu-size-body-18); color: var(--pgn-wgu-color-text-main-navy); margin: var(--pgn-wgu-spacing-20) 0 var(--pgn-wgu-spacing-8); }
-.wgu-block-interactive__synth-list { margin: 0; padding-left: var(--pgn-wgu-spacing-24); }
-.wgu-block-interactive__synth-list li { margin-bottom: var(--pgn-wgu-spacing-8); }
+.wgu-block-interactive__content--synth {
+  grid-template-columns: 760fr 520fr;
+}
 
-/* compare table — one row per step */
+/* ---- Left column: narrative -------------------------------------------- */
+.wgu-block-interactive__col--synth-left {
+  padding: 112px var(--pgn-wgu-spacing-32) 0 var(--pgn-wgu-spacing-32);   /* 112 = topbar 64 + gap 48 (Figma) */
+  gap: var(--pgn-wgu-spacing-32);
+}
+.wgu-block-interactive__synth-section {
+  display: flex; flex-direction: column;
+  gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__synth-title,
+.wgu-block-interactive__synth-sub {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 32px;
+  color: var(--pgn-wgu-color-text-main-navy);   /* #0050aa */
+  margin: 0;
+}
+.wgu-block-interactive__synth-para {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-main-body);
+  margin: 0;
+}
+.wgu-block-interactive__synth-list {
+  margin: 0;
+  padding-left: 24px;
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-main-body);
+}
+.wgu-block-interactive__synth-list li { margin: 0; }
+
+/* ---- Right column: cover + gradient + takeaway + actions --------------- */
+.wgu-block-interactive__col--synth-right {
+  position: relative;
+  padding: 48px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 100%;
+}
+.wgu-block-interactive__synth-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.wgu-block-interactive__synth-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 60.5%,
+    rgba(255, 255, 255, 0.75) 89.9%,
+    var(--pgn-wgu-background-light-gray) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+.wgu-block-interactive__synth-bottom {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--pgn-wgu-spacing-32);
+}
+
+/* Key Takeaway card */
+.wgu-block-interactive__takeaway {
+  background: var(--itv-chip);
+  border-radius: var(--pgn-wgu-radius-lg);
+  padding: var(--pgn-wgu-spacing-24);
+  color: var(--pgn-wgu-color-text-pure-white);
+  display: flex; flex-direction: column;
+  gap: var(--pgn-wgu-spacing-8);
+  width: 424px;
+  max-width: 100%;
+}
+.wgu-block-interactive__takeaway-title-row {
+  display: flex; align-items: flex-start;
+  gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__takeaway-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; flex: none;
+  color: var(--pgn-wgu-color-text-pure-white);
+}
+.wgu-block-interactive__takeaway-icon .material-symbols-outlined { font-size: 24px; }
+.wgu-block-interactive__takeaway-title {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--pgn-wgu-color-text-pure-white);
+  margin: 0;
+}
+.wgu-block-interactive__takeaway-para {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-pure-white);
+  margin: 0;
+}
+
+/* Restart / Exit actions */
+.wgu-block-interactive__synth-actions {
+  display: flex;
+  gap: var(--pgn-wgu-spacing-16);
+}
+.wgu-block-interactive__synth-btn {
+  appearance: none; -webkit-appearance: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--pgn-wgu-spacing-8);
+  width: 160px;
+  padding: 12px 32px;
+  border-radius: 999px;
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 24px;
+  cursor: pointer;
+  border: 2px solid var(--pgn-wgu-background-accent-coral);
+}
+.wgu-block-interactive__synth-btn:hover { filter: brightness(0.94); }
+.wgu-block-interactive__synth-btn--restart {
+  background: transparent;
+  color: var(--pgn-wgu-background-accent-coral);
+}
+.wgu-block-interactive__synth-btn--exit {
+  background: var(--pgn-wgu-background-accent-coral);
+  color: var(--pgn-wgu-color-text-pure-white);
+}
+.wgu-block-interactive__synth-btn-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; flex: none;
+}
+.wgu-block-interactive__synth-btn-icon .material-symbols-outlined { font-size: 24px; }
+
+/* Stepper "Completed!" label — shown to the right of the dots on synthesis. */
+.wgu-block-interactive__stepper-completed {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--pgn-wgu-color-text-pure-white);
+  margin-left: var(--pgn-wgu-spacing-8);
+  white-space: nowrap;
+}
+
+/* ---- Compare & Record variants (kept for now; will be styled next) ----- */
 .wgu-block-interactive__compare { display: flex; flex-direction: column; gap: var(--pgn-wgu-spacing-12); }
 .wgu-block-interactive__compare-row {
   display: grid; grid-template-columns: 1fr 1.2fr; gap: var(--pgn-wgu-spacing-16);
@@ -617,21 +798,9 @@
 .wgu-block-interactive__compare-primary { font-weight: var(--pgn-wgu-weight-bold); color: var(--pgn-wgu-color-text-main-navy); }
 .wgu-block-interactive__compare-fb p { margin: 0; font-size: var(--pgn-wgu-size-body-14); }
 
-/* record list — ordered, one per step */
 .wgu-block-interactive__record { margin: 0; padding-left: var(--pgn-wgu-spacing-24); display: flex; flex-direction: column; gap: var(--pgn-wgu-spacing-16); }
 .wgu-block-interactive__record-resp { font-weight: var(--pgn-wgu-weight-bold); color: var(--pgn-wgu-color-text-main-navy); }
 .wgu-block-interactive__record-fb { margin: var(--pgn-wgu-spacing-4) 0 0; font-size: var(--pgn-wgu-size-body-14); }
-
-/* right column (identical across variants) */
-.wgu-block-interactive__synth-cover { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--pgn-wgu-radius-lg); margin-bottom: var(--pgn-wgu-spacing-16); }
-.wgu-block-interactive__takeaway {
-  background: var(--itv-soft); border-radius: var(--pgn-wgu-radius-lg);
-  padding: var(--pgn-wgu-spacing-20); margin-bottom: var(--pgn-wgu-spacing-16);
-}
-.wgu-block-interactive__takeaway-icon { color: var(--pgn-wgu-color-icon-lake); font-size: 22px; }
-.wgu-block-interactive__takeaway-title { font-family: var(--pgn-wgu-family-sora); font-weight: var(--pgn-wgu-weight-bold); color: var(--pgn-wgu-color-text-main-navy); margin: var(--pgn-wgu-spacing-8) 0; }
-.wgu-block-interactive__takeaway-para { margin: 0; font-size: var(--pgn-wgu-size-body-14); line-height: var(--pgn-wgu-line-height-body-16); }
-.wgu-block-interactive__synth-actions { display: flex; gap: var(--pgn-wgu-spacing-12); }
 
 /* ----------------------------------------------------------------------------
  * TRANSITIONS (§7) — a single slide-in on screen change; option selection
@@ -656,6 +825,27 @@
   to   { transform: translateX(-100%); }
 }
 @keyframes itv-slide-entering {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Column-level slide-ins used alongside the shared-element FLIP so the newly
+ * appearing side doesn't just pop into place — the outgoing side of the OLD
+ * screen is gone by then, and the incoming column visibly enters from its
+ * own side. Same duration as the FLIP so they read as one motion. */
+.wgu-block-interactive__slide-in-from-left {
+  animation: itv-slide-in-from-left 620ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+.wgu-block-interactive__slide-in-from-right {
+  animation: itv-slide-in-from-right 620ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+@keyframes itv-slide-in-from-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes itv-slide-in-from-right {
   from { transform: translateX(100%); }
   to   { transform: translateX(0); }
 }

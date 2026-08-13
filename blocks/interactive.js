@@ -36,6 +36,7 @@
   const SVG_CANCEL           = ico("cancel");
   const SVG_STAR             = ico("star");
   const SVG_INFO             = ico("info");
+  const SVG_PUSH_PIN         = ico("push_pin");
 
   /* ---- offline cover image (self-contained SVG data URI) ------------------ */
   function cover(hueA, hueB, label) {
@@ -49,7 +50,7 @@
     </svg>`;
     return "data:image/svg+xml," + encodeURIComponent(svg);
   }
-  const COVER = cover(205, 220, "cover image");
+  const COVER = "assets/interactive-cover.png";     // real illustration (author-provided)
 
   /* ---- qualifier vocabulary (§1). Meaning always carries a text label
    *      (a11y §8: never icon/colour alone). ---------------------------------*/
@@ -152,7 +153,7 @@
         state.primary[i] = opt;             // primary = only selection (§R1)
         ex.add(opt);
         state.displayed[i] = opt;
-        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);   // shared element
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__step-body`);   // shared element
         toScreen("feedback", "Learner selects an option", "step-context", false);
         return;
       }
@@ -161,7 +162,7 @@
       ex.add(opt);                          // permanent (§R2)
       state.displayed[i] = opt;
       if (state.screen === "context") {
-        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);   // shared element
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__step-body`);   // shared element
         toScreen("feedback", "Learner selects an option", "step-context", false);
       } else {
         // already in feedback → update pane in place, NO slide (§7, §R4)
@@ -192,6 +193,10 @@
     // transition, so renderModalBody can FLIP it into its new position instead
     // of sliding the whole screen.
     let flipOptionsFrom = null;
+    // Direction the "new" (non-options) column slides in from during a
+    // shared-element transition: "left" (Return → context frame from left)
+    // or "right" (Select → feedback pane from right). Null for no slide.
+    let flipEnterSide = null;
     function goReturn() {
       // From synthesis: back to the last step's feedback (§10, state preserved).
       if (state.screen === "synthesis") {
@@ -202,9 +207,11 @@
       // From step-feedback: back to the same step's context so the learner can
       // re-read the framing before choosing again (state preserved). The
       // options element is FLIP'd from its feedback-left position back to the
-      // context-right position instead of sliding the whole screen.
+      // context-right position, and the context-frame column slides in from
+      // the left instead of just appearing.
       if (state.screen === "feedback") {
-        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__step-body`);
+        flipEnterSide = "left";
         toScreen("context", "Return", "step-feedback", false);
       }
     }
@@ -353,17 +360,22 @@
     }
 
     function updateBar() {
-      // Stepper dots: N per steps count (up to 5). Active dot = current step.
+      // Stepper dots: N per steps count (up to 5). On step-context/feedback,
+      // only the current step is active. On synthesis, all N dots are filled
+      // and a "Completed!" label is appended after the dots.
       dotsEl.replaceChildren();
+      const isSynth = state.screen === "synthesis";
       for (let idx = 0; idx < steps.length; idx++) {
         if (idx > 0) dotsEl.appendChild(el("span", `${IB}__stepper-line`));
         const dot = el("div", `${IB}__stepper-dot`);
-        if (idx === state.step && state.screen !== "synthesis") dot.classList.add("is-active");
+        if (isSynth || idx === state.step) dot.classList.add("is-active");
         dot.appendChild(el("span", `${IB}__stepper-num`, String(idx + 1)));
         dotsEl.appendChild(dot);
       }
-      // Replay is a no-op / hidden on step 1 since we're already there.
-      replayBtn.hidden = state.step === 0 && state.screen !== "synthesis";
+      if (isSynth) dotsEl.appendChild(el("span", `${IB}__stepper-completed`, "Completed!"));
+      // Replay is hidden on step 1 (nothing to go back to) but still shown on
+      // synthesis so the learner can jump back to the sequence.
+      replayBtn.hidden = state.step === 0 && !isSynth;
     }
 
     function renderModalBody(slide) {
@@ -374,6 +386,8 @@
       // shared element between context and feedback in the same step).
       const flipFromRect = flipOptionsFrom ? flipOptionsFrom.getBoundingClientRect() : null;
       flipOptionsFrom = null;
+      const enterSide = flipEnterSide;
+      flipEnterSide = null;
 
       let content;
       if (state.screen === "context") content = renderContext();
@@ -382,8 +396,11 @@
 
       // Each render is wrapped in a full-size __screen so its background can
       // extend behind the (absolute) topbar and be tinted independently. The
-      // topbar itself is drawn on top and never slides.
+      // topbar itself is drawn on top and never slides. Synthesis gets a
+      // modifier so the right (cover-image) column can extend up behind the
+      // topbar.
       const screen = el("div", `${IB}__screen`);
+      if (state.screen === "synthesis") screen.classList.add(`${IB}__screen--synth`);
       screen.appendChild(content);
 
       // Slide transition (§7): OUTGOING screen translates to the left and the
@@ -409,30 +426,61 @@
         return;
       }
 
-      // Initial render or reduced-motion: no slide, just swap.
+      // Initial render or reduced-motion: no slide, just swap. Preserve the
+      // outgoing screen's scrollTop for the incoming one so a mid-transition
+      // FLIP doesn't have to compensate for a scroll jump.
       pulseIncoming = false;
+      const prevScrollTop = existing.length > 0 ? existing[existing.length - 1].scrollTop : 0;
       bodyEl.replaceChildren(screen);
 
+      // Sibling column slides in from its own side so it doesn't just pop —
+      // pairs with the FLIP on the shared options element.
+      if (enterSide && !reduced()) {
+        const sel = enterSide === "left"
+          ? `.${IB}__col--context`
+          : `.${IB}__col--feedback`;
+        const enteringCol = screen.querySelector(sel);
+        if (enteringCol) {
+          const cls = `${IB}__slide-in-from-${enterSide}`;
+          enteringCol.classList.add(cls);
+          const clear = () => enteringCol.classList.remove(cls);
+          enteringCol.addEventListener("animationend", clear, { once: true });
+          setTimeout(clear, 1200);
+        }
+      }
+
       // FLIP: after the swap, if we captured a from-rect, invert the new
-      // options into the old position and animate to the identity so it reads
-      // as a smooth relocation. The surrounding content just changes.
+      // step-body (restate + options + action — the whole shared cluster)
+      // into the old position and animate to the identity so it reads as a
+      // smooth relocation. The surrounding content just changes.
       if (flipFromRect && !reduced()) {
-        const newOptions = screen.querySelector(`.${IB}__options`);
-        if (newOptions) {
-          const to = newOptions.getBoundingClientRect();
+        const sharedEl = screen.querySelector(`.${IB}__step-body`);
+        if (sharedEl) {
+          // Match the previous scroll so the incoming screen starts visually
+          // identical to where the outgoing one was — no scroll jump before
+          // the FLIP kicks in.
+          if (prevScrollTop > 0) screen.scrollTop = prevScrollTop;
+          const to = sharedEl.getBoundingClientRect();
           const dx = flipFromRect.left - to.left;
           const dy = flipFromRect.top - to.top;
           if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-            newOptions.style.transition = "none";
-            newOptions.style.transform = `translate(${dx}px, ${dy}px)`;
-            void newOptions.offsetWidth;                           // force reflow
-            newOptions.style.transition = "transform 620ms cubic-bezier(0.4, 0, 0.2, 1)";
-            newOptions.style.transform = "";
+            sharedEl.style.transition = "none";
+            sharedEl.style.transform = `translate(${dx}px, ${dy}px)`;
+            void sharedEl.offsetWidth;                              // force reflow
+            sharedEl.style.transition = "transform 620ms cubic-bezier(0.4, 0, 0.2, 1)";
+            sharedEl.style.transform = "";
             const cleanup = () => {
-              newOptions.style.transition = "";
-              newOptions.style.transform = "";
+              sharedEl.style.transition = "";
+              sharedEl.style.transform = "";
+              // After the FLIP has settled, smoothly scroll the new screen
+              // back to the top so the learner ends up at the start of the
+              // feedback layout.
+              if (screen.scrollTop > 0) {
+                try { screen.scrollTo({ top: 0, behavior: "smooth" }); }
+                catch (_) { screen.scrollTop = 0; }
+              }
             };
-            newOptions.addEventListener("transitionend", cleanup, { once: true });
+            sharedEl.addEventListener("transitionend", cleanup, { once: true });
             setTimeout(cleanup, 900);
           }
         }
@@ -465,9 +513,14 @@
       c.appendChild(left);
 
       const right = el("div", `${IB}__col ${IB}__col--step`);
-      right.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
-      right.appendChild(renderOptions(i));
-      right.appendChild(renderAction(i));    // shown disabled until an option is picked
+      // Wrap restate + options + action in __step-body so the whole cluster
+      // can be treated as one shared element and FLIP'd across the context ↔
+      // feedback transitions.
+      const stepBody = el("div", `${IB}__step-body`);
+      stepBody.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
+      stepBody.appendChild(renderOptions(i));
+      stepBody.appendChild(renderAction(i));    // shown disabled until an option is picked
+      right.appendChild(stepBody);
       c.appendChild(right);
       return c;
     }
@@ -583,30 +636,69 @@
       return wrap;
     }
 
-    /* ---- synthesis (§4.4) ---- */
+    /* ---- synthesis (§4.4) — Figma US-09 layout:
+     * Left col (~760): narrative (conclusion + para + additional title + bullets)
+     * Right col (~520): full-height cover image + gradient overlay + a Key
+     *   Takeaway card and the Restart / Exit buttons pinned to the bottom-right.
+     * The right col extends behind the (absolute) topbar. ---------------------*/
     function renderSynthesis() {
       const c = el("div", `${IB}__content ${IB}__content--synth`);
-      const left = el("div", `${IB}__col ${IB}__synth-left`);
+
+      const left = el("div", `${IB}__col ${IB}__col--synth-left`);
       const v = config.synthesisVariant;
       if (v === "compare") renderCompare(left);
       else if (v === "record") renderRecord(left);
       else renderMinimal(left);
       c.appendChild(left);
 
-      // right column — identical across all three variants (§4.4)
-      const right = el("div", `${IB}__col ${IB}__synth-right`);
+      const right = el("div", `${IB}__col ${IB}__col--synth-right`);
+      // Cover image full-column (extends behind the topbar).
+      if (config.cover !== null) {
+        const img = el("img", `${IB}__synth-cover-img`);
+        img.src = config.cover || COVER;
+        img.alt = "";
+        right.appendChild(img);
+      }
+      // Gradient overlay that fades the image into mint at the bottom so the
+      // takeaway card and buttons sit on solid ground.
+      right.appendChild(el("div", `${IB}__synth-cover-overlay`));
+
+      // Bottom-aligned content: takeaway card + actions row.
+      const bottom = el("div", `${IB}__synth-bottom`);
+
       const s = config.synthesis;
-      if (config.cover !== null) { const img = el("img", `${IB}__synth-cover`); img.src = config.cover || COVER; img.alt = ""; right.appendChild(img); }
       const card = el("div", `${IB}__takeaway`);
-      card.appendChild(el("div", `${IB}__takeaway-icon`, "★"));
-      card.appendChild(el("div", `${IB}__takeaway-title`, s.takeawayTitle));
+      const cardTitleRow = el("div", `${IB}__takeaway-title-row`);
+      const pin = el("span", `${IB}__takeaway-icon`);
+      pin.innerHTML = SVG_PUSH_PIN;
+      cardTitleRow.appendChild(pin);
+      cardTitleRow.appendChild(el("span", `${IB}__takeaway-title`, "Key Takeaway"));
+      card.appendChild(cardTitleRow);
       card.appendChild(el("p", `${IB}__takeaway-para`, s.takeawayPara));
-      right.appendChild(card);
+      bottom.appendChild(card);
+
       const actions = el("div", `${IB}__synth-actions`);
-      const restart = el("button", `${IB}__btn ${IB}__btn--ghost`, "Restart"); restart.type = "button"; restart.addEventListener("click", restart_);
-      const exit = el("button", `${IB}__btn`, "Exit"); exit.type = "button"; exit.addEventListener("click", () => { setEdge("synthesis", "Exit", "launch"); closeModal("synthesis"); });
-      actions.appendChild(restart); actions.appendChild(exit);
-      right.appendChild(actions);
+      const restartBtn = el("button", `${IB}__synth-btn ${IB}__synth-btn--restart`);
+      restartBtn.type = "button";
+      restartBtn.appendChild(el("span", `${IB}__synth-btn-label`, "Restart"));
+      const restartIco = el("span", `${IB}__synth-btn-icon`);
+      restartIco.innerHTML = SVG_REPLAY;
+      restartBtn.appendChild(restartIco);
+      restartBtn.addEventListener("click", restart_);
+
+      const exitBtn = el("button", `${IB}__synth-btn ${IB}__synth-btn--exit`);
+      exitBtn.type = "button";
+      exitBtn.appendChild(el("span", `${IB}__synth-btn-label`, "Exit"));
+      const exitIco = el("span", `${IB}__synth-btn-icon`);
+      exitIco.innerHTML = SVG_CLOSE;
+      exitBtn.appendChild(exitIco);
+      exitBtn.addEventListener("click", () => { setEdge("synthesis", "Exit", "launch"); closeModal("synthesis"); });
+
+      actions.appendChild(restartBtn);
+      actions.appendChild(exitBtn);
+      bottom.appendChild(actions);
+
+      right.appendChild(bottom);
       c.appendChild(right);
       return c;
     }
@@ -614,13 +706,20 @@
 
     function renderMinimal(left) {
       const s = config.synthesis.minimal;   // authored content only (§R7)
-      const t1 = el("h2", `${IB}__synth-title`, s.conclusionTitle); t1.id = `${IB}-dlg-title`;
-      left.appendChild(t1);
-      left.appendChild(el("p", `${IB}__synth-para`, s.outcomePara));
-      left.appendChild(el("h3", `${IB}__synth-sub`, s.additionalTitle));
+
+      const sec1 = el("div", `${IB}__synth-section`);
+      const t1 = el("h2", `${IB}__synth-title`, s.conclusionTitle);
+      t1.id = `${IB}-dlg-title`;
+      sec1.appendChild(t1);
+      sec1.appendChild(el("p", `${IB}__synth-para`, s.outcomePara));
+      left.appendChild(sec1);
+
+      const sec2 = el("div", `${IB}__synth-section`);
+      sec2.appendChild(el("h3", `${IB}__synth-sub`, s.additionalTitle));
       const ul = el("ul", `${IB}__synth-list`);
       s.bullets.forEach((b) => ul.appendChild(el("li", null, b)));
-      left.appendChild(ul);
+      sec2.appendChild(ul);
+      left.appendChild(sec2);
     }
     function renderCompare(left) {
       const s = config.synthesis.compare;

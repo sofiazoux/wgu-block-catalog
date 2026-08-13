@@ -450,9 +450,16 @@ function renderDeferredDetail(b) {
  * ==========================================================================*/
 function renderInteractiveDetail(b) {
   const ITV = window.ITV;
-  const state = { presetId: ITV.PRESETS[0].id, currentState: false, reducedMotion: false };
+  // Client-demo mode: while the rail (content configuration) and spec panel
+  // are not client-ready, we hide them and load a preset that showcases the
+  // full flow (compare synthesis). Flip to false to bring the workbench UI
+  // back once those panels are ready to share.
+  const DEMO_MODE = true;
+  const defaultPresetId = DEMO_MODE ? "explore-compare" : ITV.PRESETS[0].id;
+  const state = { presetId: defaultPresetId, currentState: false, reducedMotion: false };
 
   const detail = h("div", "detail");
+  if (DEMO_MODE) detail.classList.add("detail--interactive-demo");
   const header = h("div", "detail__header");
   header.appendChild(backLink());
   const titleRow = h("div", "detail__title-row");
@@ -462,6 +469,7 @@ function renderInteractiveDetail(b) {
   detail.appendChild(header);
 
   const workbench = h("div", "workbench");
+  if (DEMO_MODE) workbench.classList.add("workbench--interactive-demo");
 
   // -- Rail --
   const rail = h("div", "rail");
