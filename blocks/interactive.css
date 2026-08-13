@@ -20,64 +20,133 @@
   --itv-bar:       var(--pgn-wgu-background-main-navy);
   --itv-accent:    var(--pgn-wgu-background-main-blue);
   --itv-soft:      var(--pgn-wgu-background-light-gray);
+  --itv-chip:      #399fb0;   /* exact teal used in the Figma chip */
 
   font-family: var(--pgn-wgu-family-lato);
   color: var(--pgn-wgu-color-text-main-body);
   width: 100%;
 }
 
-/* The "app viewport": launch renders in it; the modal covers it (§2/§3). */
+/* The "app viewport": the dark-navy canvas the card sits on. Launch renders
+ * inside; the modal covers everything (§2/§3).
+ *
+ * Padding is uniform and proportional to the stage width (10.625%) — same
+ * ratio as Figma's 136px padding in a 1280px-wide frame. With this ratio +
+ * the card's aspect-ratio (1008/559), the viewport as a whole preserves the
+ * Figma frame aspect (1280/831 ≈ 1.540) at every stage width. Flex centers
+ * the card so any aspect-ratio/min-height interaction can never push it off
+ * axis. */
 .wgu-block-interactive__viewport {
   position: relative;
-  min-height: 560px;
-  border: 1px solid var(--pgn-wgu-color-border-gray);
-  border-radius: var(--pgn-wgu-radius-lg);
-  background: var(--pgn-wgu-background-pure-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(24px, 10.625%, 136px);
+  background: var(--pgn-wgu-background-main-navy);
   overflow: hidden;            /* the modal + slides clip to the viewport */
+}
+
+/* When the block sits inside the catalog stage, drop the stage's white
+ * framing so the block's own navy canvas reaches the stage edges — matches
+ * the Figma Launch Screen where the whole frame is navy. */
+.stage:has(.wgu-block-interactive) {
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
 }
 
 /* ----------------------------------------------------------------------------
  * LAUNCH (in page, not modal) — §4.1
+ * Rounded card on navy canvas: mint-tinted left panel (chip + intent + CTA)
+ * and the illustration flushes the right edge with no gap.
  * --------------------------------------------------------------------------*/
 .wgu-block-interactive__launch {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--pgn-wgu-spacing-32);
-  align-items: center;
-  padding: var(--pgn-wgu-spacing-48);
-  min-height: 560px;
+  grid-template-columns: 1.625fr 1fr;    /* 624 / 384 from Figma */
+  gap: 0;
+  width: 100%;                            /* fill the padded flex box */
+  aspect-ratio: 1008 / 559;              /* preserve card proportion on resize */
+  border-radius: var(--pgn-wgu-radius-xxl);   /* 24 — matches Figma card */
+  overflow: hidden;
 }
 .wgu-block-interactive__launch[inert] { filter: none; }
-.wgu-block-interactive__eyebrow {
-  font-size: var(--pgn-wgu-size-body-12, 12px);
-  font-weight: var(--pgn-wgu-weight-bold);
-  letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--pgn-wgu-color-text-main-blue);
-  margin: 0 0 var(--pgn-wgu-spacing-12);
+
+.wgu-block-interactive__launch-main {
+  display: flex;
+  flex-direction: column;
+  background: var(--pgn-wgu-background-light-gray);
+  padding: 40px;
+  min-width: 0;
 }
+
+/* Top chip: arrow-up-right icon + divider + interactive name (§4.1).
+ * Corners are intentionally asymmetric (16/16/16/4) per Figma. */
+.wgu-block-interactive__chip {
+  display: flex; align-items: center;
+  gap: var(--pgn-wgu-spacing-16);
+  padding: var(--pgn-wgu-spacing-16);
+  border: 1px solid rgba(57, 159, 176, 0.5);
+  border-radius: 16px 16px 16px 4px;
+  background: rgba(57, 159, 176, 0.05);
+  color: var(--itv-chip);
+  margin-bottom: var(--pgn-wgu-spacing-32);
+}
+.wgu-block-interactive__chip-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; flex: none;
+}
+.wgu-block-interactive__chip-icon svg { width: 100%; height: 100%; }
+.wgu-block-interactive__chip-divider {
+  width: 1px; height: 48px; background: currentColor; opacity: 0.5; flex: none;
+}
+.wgu-block-interactive__chip-name {
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: 600;                     /* SemiBold, per Figma */
+  font-size: 20px;
+  line-height: 34px;
+  color: var(--itv-chip);
+}
+
 .wgu-block-interactive__intent {
   font-family: var(--pgn-wgu-family-sora);
   font-weight: var(--pgn-wgu-weight-bold);
-  font-size: var(--pgn-wgu-size-h3);
-  line-height: var(--pgn-wgu-line-height-h3);
+  font-size: var(--pgn-wgu-size-h4);
+  line-height: 1.25;                         /* Figma "normal" ≈ 1.25 */
   color: var(--pgn-wgu-color-text-main-navy);
-  margin: 0 0 var(--pgn-wgu-spacing-16);
+  margin: 0 0 var(--pgn-wgu-spacing-8);
 }
 .wgu-block-interactive__lead {
-  font-size: var(--pgn-wgu-size-body-18);
-  line-height: var(--pgn-wgu-line-height-body-18);
-  margin: 0 0 var(--pgn-wgu-spacing-24);
+  font-size: var(--pgn-wgu-size-body-16);
+  line-height: var(--pgn-wgu-line-height-body-16);
+  color: var(--pgn-wgu-color-text-main-body);
+  margin: 0;
 }
 .wgu-block-interactive__launch-cover {
-  aspect-ratio: 4 / 3;
-  border-radius: var(--pgn-wgu-radius-lg);
   background: var(--itv-soft);        /* reserves space if the cover is missing (§10) */
   overflow: hidden;
+  min-height: 100%;
 }
 .wgu-block-interactive__launch-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* Primary CTA + buttons */
-.wgu-block-interactive__cta,
+/* Primary CTA — coral pill, Sora, bottom-right of the left panel. */
+.wgu-block-interactive__cta {
+  appearance: none; -webkit-appearance: none;
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: var(--pgn-wgu-weight-bold);
+  font-size: var(--pgn-wgu-size-body-16);
+  line-height: var(--pgn-wgu-line-height-body-16);
+  color: var(--pgn-wgu-color-text-pure-white);
+  background: var(--pgn-wgu-background-accent-coral);
+  border: none;
+  border-radius: 999px;
+  padding: 12px 32px;
+  cursor: pointer;
+  margin-top: auto;              /* push to bottom of the flex column */
+  align-self: flex-end;          /* stick to the right edge */
+}
+.wgu-block-interactive__cta:hover { filter: brightness(0.94); }
+
+/* Secondary buttons used in synthesis actions. */
 .wgu-block-interactive__btn {
   appearance: none; -webkit-appearance: none;
   font-family: var(--pgn-wgu-family-lato);
@@ -86,11 +155,10 @@
   color: #fff;
   background: var(--itv-accent);
   border: none;
-  border-radius: var(--pgn-wgu-radius-rounded-pill);
+  border-radius: 999px;
   padding: 12px 28px;
   cursor: pointer;
 }
-.wgu-block-interactive__cta:hover,
 .wgu-block-interactive__btn:hover { background: var(--pgn-wgu-color-button-hover); }
 .wgu-block-interactive__btn--ghost {
   background: transparent; color: var(--pgn-wgu-color-text-main-blue);

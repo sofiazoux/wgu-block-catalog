@@ -521,6 +521,7 @@ function renderInteractiveDetail(b) {
 
   const stageFrame = h("div", "stage-frame");
   const stage = h("div", "stage");
+  stage.style.width = "980px";                     // load in Wide by default
   const stageInner = h("div", "stage__inner");
   const stateView = h("div", "itv-stateview");     // "Current state" overlay
   stageInner.appendChild(stateView);

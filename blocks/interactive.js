@@ -219,10 +219,24 @@
     function renderLaunch() {
       const wrap = el("div", `${IB}__launch`);
       const left = el("div", `${IB}__launch-main`);
-      left.appendChild(el("p", `${IB}__eyebrow`, config.name));
+
+      // chip: arrow-up-right icon, divider, interactive name
+      const chip = el("div", `${IB}__chip`);
+      const chipIcon = el("span", `${IB}__chip-icon`);
+      chipIcon.setAttribute("aria-hidden", "true");
+      chipIcon.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M7 17L17 7M17 7H9M17 7V15" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      chip.appendChild(chipIcon);
+      chip.appendChild(el("span", `${IB}__chip-divider`));
+      chip.appendChild(el("span", `${IB}__chip-name`, config.name));
+      left.appendChild(chip);
+
       left.appendChild(el("h2", `${IB}__intent`, config.launch.intentTitle));
       left.appendChild(el("p", `${IB}__lead`, config.launch.contextParagraph));
-      launchBtn = el("button", `${IB}__cta`, config.launch.launchLabel || "Launch");
+
+      launchBtn = el("button", `${IB}__cta`, config.launch.launchLabel || "Launch Interactive");
       launchBtn.type = "button";
       launchBtn.addEventListener("click", openModal);
       left.appendChild(launchBtn);
@@ -542,7 +556,7 @@
     {
       id: "choose-minimal", group: "Default", label: "Choose-one · minimal",
       description: "Two steps in choose-one mode; minimal synthesis. Options lock after the first pick.",
-      config: { name: "What shapes behaviour?", cover: COVER, launch: { intentTitle: "Weigh situation against disposition", contextParagraph: "You will make two judgement calls, then see how your reasoning holds up. Choose the response you think is best — your first choice is what counts.", launchLabel: "Launch" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step(), step({ contextTitle: "A second situation" })] },
+      config: { name: "What shapes behaviour?", cover: COVER, launch: { intentTitle: "Weigh situation against disposition", contextParagraph: "You will make two judgement calls, then see how your reasoning holds up. Choose the response you think is best — your first choice is what counts.", launchLabel: "Launch Interactive" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step(), step({ contextTitle: "A second situation" })] },
     },
     {
       id: "explore-compare", group: "Optional configuration", label: "Explore-all · compare",
@@ -552,29 +566,29 @@
     {
       id: "mixed-record", group: "Optional configuration", label: "Mixed modes · record",
       description: "Step 1 asks for judgement (choose-one), step 2 for exploration (explore-all); record synthesis.",
-      config: { name: "Judgement, then exploration", cover: COVER, launch: { intentTitle: "First decide, then explore", contextParagraph: "The first step asks for your best judgement. The second asks you to explore every response. The recap records what you did.", launchLabel: "Launch" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Now explore" })] },
+      config: { name: "Judgement, then exploration", cover: COVER, launch: { intentTitle: "First decide, then explore", contextParagraph: "The first step asks for your best judgement. The second asks you to explore every response. The recap records what you did.", launchLabel: "Launch Interactive" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Now explore" })] },
     },
     {
       id: "record-3", group: "Optional configuration", label: "Three steps · record",
       description: "Three steps, record synthesis — the step-by-step recap.",
-      config: { name: "Three decisions", cover: COVER, launch: { intentTitle: "Three decisions in a row", contextParagraph: "Work through three related decisions; the recap lists your response to each.", launchLabel: "Launch" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Second decision" }), step({ contextTitle: "Third decision" })] },
+      config: { name: "Three decisions", cover: COVER, launch: { intentTitle: "Three decisions in a row", contextParagraph: "Work through three related decisions; the recap lists your response to each.", launchLabel: "Launch Interactive" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Second decision" }), step({ contextTitle: "Third decision" })] },
     },
 
     /* ---- Edge cases (§10) ---- */
     {
       id: "single-compare", group: "Edge cases", label: "Single step → Compare on step 1",
       description: "A one-step interactive: the action button reads Compare on step 1, and Return is hidden.",
-      config: { name: "One decision", cover: COVER, launch: { intentTitle: "A single judgement", contextParagraph: "Just one step. The action button reads Compare, not Continue, because this is already the last step.", launchLabel: "Launch" }, synthesisVariant: "compare", synthesis: synthAll, steps: [step()] },
+      config: { name: "One decision", cover: COVER, launch: { intentTitle: "A single judgement", contextParagraph: "Just one step. The action button reads Compare, not Continue, because this is already the last step.", launchLabel: "Launch Interactive" }, synthesisVariant: "compare", synthesis: synthAll, steps: [step()] },
     },
     {
       id: "two-options", group: "Edge cases", label: "Step with two options",
       description: "Explore-all with only two options — the gate is satisfied quickly, which is correct.",
-      config: { name: "A quick gate", cover: COVER, launch: { intentTitle: "Only two responses", contextParagraph: "With two options in explore-all, the gate opens after both are explored.", launchLabel: "Launch" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [exploreStep({ options: [q("Act on the cues", "best", "You read the moment first."), q("Fall back on habit", "incorrect", "Habit misses what has changed here.")] })] },
+      config: { name: "A quick gate", cover: COVER, launch: { intentTitle: "Only two responses", contextParagraph: "With two options in explore-all, the gate opens after both are explored.", launchLabel: "Launch Interactive" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [exploreStep({ options: [q("Act on the cues", "best", "You read the moment first."), q("Fall back on habit", "incorrect", "Habit misses what has changed here.")] })] },
     },
     {
       id: "long-text", group: "Edge cases", label: "Long option / feedback text",
       description: "Long option labels and long feedback must wrap without breaking layout.",
-      config: { name: "Wrapping under pressure", cover: COVER, launch: { intentTitle: "When the text runs long", contextParagraph: "Some authors write long options and long feedback. The layout has to hold — both wrap without breaking the two-column structure or the modal.", launchLabel: "Launch" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step({ options: [
+      config: { name: "Wrapping under pressure", cover: COVER, launch: { intentTitle: "When the text runs long", contextParagraph: "Some authors write long options and long feedback. The layout has to hold — both wrap without breaking the two-column structure or the modal.", launchLabel: "Launch Interactive" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step({ options: [
         q("Read the situation carefully before acting, giving weight to the specific cues in front of you rather than defaulting to what usually works", "best", "A strong choice. Reading the situation first, before reaching for a habitual response, is exactly the judgement this step is testing — and it is a habit that transfers across very different settings, from a classroom to a negotiation to a decision made alone under real uncertainty."),
         q("Rely on the experience you have accumulated over many similar past situations", "incorrect", "Experience is valuable, but the trap here is that this situation only looks similar. The cues that matter have shifted, and a response tuned to the old pattern will miss them. This is the failure mode the step is designed to surface."),
         q("Pause and gather more information before committing to any single course of action", "correct", "Reasonable and often wise — though notice that at some point the task itself is to exercise judgement under uncertainty, because more information is not always available."),
@@ -583,12 +597,12 @@
     {
       id: "no-cover", group: "Edge cases", label: "Missing cover image",
       description: "No cover image supplied — the launch and synthesis layouts must not collapse.",
-      config: { name: "No cover supplied", cover: null, launch: { intentTitle: "Layout holds without a cover", contextParagraph: "When no cover image is provided, the column reserves its space and the layout stays intact.", launchLabel: "Launch" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step()] },
+      config: { name: "No cover supplied", cover: null, launch: { intentTitle: "Layout holds without a cover", contextParagraph: "When no cover image is provided, the column reserves its space and the layout stays intact.", launchLabel: "Launch Interactive" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step()] },
     },
     {
       id: "five-steps", group: "Edge cases", label: "Five steps (maximum)",
       description: "The maximum of five steps (§R6). Return works across all of them.",
-      config: { name: "The full length", cover: COVER, launch: { intentTitle: "Five decisions", contextParagraph: "Five steps is the maximum an interactive may have. Continue moves forward; Return moves back with state preserved.", launchLabel: "Launch" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Step two" }), step({ contextTitle: "Step three" }), exploreStep({ contextTitle: "Step four" }), step({ contextTitle: "Step five" })] },
+      config: { name: "The full length", cover: COVER, launch: { intentTitle: "Five decisions", contextParagraph: "Five steps is the maximum an interactive may have. Continue moves forward; Return moves back with state preserved.", launchLabel: "Launch Interactive" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Step two" }), step({ contextTitle: "Step three" }), exploreStep({ contextTitle: "Step four" }), step({ contextTitle: "Step five" })] },
     },
   ];
   const interactivePresetById = (id) => INTERACTIVE_PRESETS.find((x) => x.id === id) || INTERACTIVE_PRESETS[0];
