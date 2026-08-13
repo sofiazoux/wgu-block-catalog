@@ -10,6 +10,13 @@
  * the resizer drives the two-column → stacked collapse (§9).
  * ==========================================================================*/
 
+.wgu-block-interactive .material-symbols-outlined {
+  line-height: 1;
+  user-select: none;
+  vertical-align: middle;
+  font-size: 24px;              /* default; per-container overrides below   */
+}
+
 .wgu-block-interactive {
   /* Qualifier tones — from the system success/danger ramp + brand blues. */
   --itv-correct:   #0e8911;   /* success-500 */
@@ -95,7 +102,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 48px; height: 48px; flex: none;
 }
-.wgu-block-interactive__chip-icon svg { width: 100%; height: 100%; }
+.wgu-block-interactive__chip-icon .material-symbols-outlined { font-size: 48px; }
 .wgu-block-interactive__chip-divider {
   width: 1px; height: 48px; background: currentColor; opacity: 0.5; flex: none;
 }
@@ -186,17 +193,19 @@
 
 .wgu-block-interactive__modal {
   position: absolute; inset: 0;
-  display: flex; flex-direction: column;
-  background: var(--pgn-wgu-background-light-gray);
+  overflow: hidden;
+  background: var(--pgn-wgu-background-light-gray);   /* fallback under screens */
 }
 
-/* ---- Top bar: transparent, 3-column flex (name / stepper pill / close) ----
- * The navy stepper "pill" hangs from the top edge (rounded bottom corners). */
+/* ---- Top bar: absolute overlay on top of the sliding screens. Transparent
+ * bg so each screen's own colour shows through it. --------------------------*/
 .wgu-block-interactive__topbar {
-  flex: none;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 64px;
+  z-index: 3;
   display: flex;
   align-items: flex-start;
-  height: 64px;
   background: transparent;
 }
 .wgu-block-interactive__topbar-name {
@@ -237,6 +246,7 @@
 .wgu-block-interactive__replay[hidden] { display: none; }
 .wgu-block-interactive__replay:hover { opacity: 1; }
 .wgu-block-interactive__replay svg { width: 100%; height: 100%; }
+.wgu-block-interactive__replay .material-symbols-outlined { font-size: 24px; }
 .wgu-block-interactive__stepper-dots {
   display: flex; align-items: center;
 }
@@ -275,12 +285,24 @@
   color: var(--pgn-wgu-color-icon-navy);
 }
 .wgu-block-interactive__topbar-close svg { width: 32px; height: 32px; }
+.wgu-block-interactive__topbar-close .material-symbols-outlined { font-size: 32px; }
 
 .wgu-block-interactive__body {
-  flex: 1;
-  overflow: auto;
-  padding-top: var(--pgn-wgu-spacing-48);   /* header 64 + 48 = 112 (Figma) */
+  position: absolute;
+  inset: 0;                                 /* covers whole modal — screens
+                                             * extend behind the top bar too   */
+  overflow: hidden;                         /* clip the sliding screens        */
 }
+.wgu-block-interactive__screen {
+  position: absolute;
+  inset: 0;                                 /* fills body top-to-bottom        */
+  background-color: var(--pgn-wgu-background-light-gray);
+  padding-top: 112px;                       /* Figma: topbar 64 + gap 48       */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.wgu-block-interactive__screen > .wgu-block-interactive__content { flex: 1; }
 
 /* ---- Two-column content shell (§4.2/§4.3) ------------------------------- */
 .wgu-block-interactive__content {
@@ -296,12 +318,39 @@
   gap: var(--pgn-wgu-spacing-48);
 }
 .wgu-block-interactive__col--step {
-  padding: 0 var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);
+  padding: 0 var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);   /* context: right col */
+  gap: var(--pgn-wgu-spacing-24);
+}
+/* Feedback screen: step column moves to the LEFT and gains a 32px column for
+ * the keyboard_return icon that goes back to this step's context (§3). */
+.wgu-block-interactive__col--step:first-child {
+  padding: 0 var(--pgn-wgu-spacing-24) 0 var(--pgn-wgu-spacing-48);
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--pgn-wgu-spacing-24);
+}
+.wgu-block-interactive__return-btn {
+  appearance: none; -webkit-appearance: none;
+  align-self: center;
+  width: 32px; height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--pgn-wgu-color-icon-navy);
+  cursor: pointer;
+  opacity: 0.85;
+}
+.wgu-block-interactive__return-btn:hover { opacity: 1; }
+.wgu-block-interactive__return-btn svg { width: 100%; height: 100%; }
+.wgu-block-interactive__return-btn .material-symbols-outlined { font-size: 32px; }
+.wgu-block-interactive__step-body {
+  min-width: 0;
+  display: flex; flex-direction: column;
   gap: var(--pgn-wgu-spacing-24);
 }
 .wgu-block-interactive__col--feedback {
-  padding: 0 var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);
-  gap: var(--pgn-wgu-spacing-24);
+  padding: 60px var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);   /* Figma 60px top offset */
+  gap: var(--pgn-wgu-spacing-16);
   align-self: start;
 }
 
@@ -344,6 +393,7 @@
   display: flex; align-items: center; justify-content: center;
 }
 .wgu-block-interactive__task-icon svg { width: 19.2px; height: 19.2px; }
+.wgu-block-interactive__task-icon .material-symbols-outlined { font-size: 19.2px; }
 .wgu-block-interactive__task-cue-text {
   flex: 1 1 0; min-width: 0;
   font-family: var(--pgn-wgu-family-lato);
@@ -415,6 +465,7 @@
   transition: opacity 180ms ease 40ms;
 }
 .wgu-block-interactive__option-arrow svg { width: 100%; height: 100%; }
+.wgu-block-interactive__option-arrow .material-symbols-outlined { font-size: 32px; }
 
 /* --- HOVER / FOCUS / SELECTED-ACTIVE — indicator expands to 69px + arrow -- */
 .wgu-block-interactive__option:hover:not(.is-locked) .wgu-block-interactive__option-indicator,
@@ -471,9 +522,9 @@
   font-weight: 700;
   font-size: 16px;
   line-height: 24px;
-  color: #fff;
-  background: var(--itv-chip);
-  border: 1px solid var(--itv-chip);
+  color: var(--pgn-wgu-color-text-pure-white);
+  background: var(--pgn-wgu-background-accent-coral);   /* same coral as launch CTA */
+  border: 1px solid transparent;
   border-radius: 999px;
   padding: 12px 32px;
   cursor: pointer;
@@ -484,6 +535,7 @@
   border-color: #aaa;
   color: #aaa;
   cursor: not-allowed;
+  filter: none;
 }
 .wgu-block-interactive__action-hint { display: none; }  /* Figma removes the inline hint */
 .wgu-block-interactive__action-btn[aria-disabled="true"] {
@@ -495,19 +547,56 @@
 }
 .wgu-block-interactive__action-hint.is-ok { color: var(--itv-correct); }
 
-/* ---- Feedback pane (§4.3) ---- */
+/* ---- Feedback pane (§4.3) ------------------------------------------------
+ * Qualifier: icon + colored label, no pill. Tones per Figma US-03. The old
+ * inline pill variant is preserved for the synthesis compare/record rows. */
 .wgu-block-interactive__qual {
-  display: inline-flex; align-items: center; gap: var(--pgn-wgu-spacing-8);
-  font-weight: var(--pgn-wgu-weight-bold);
-  padding: 6px 12px; border-radius: var(--pgn-wgu-radius-rounded-pill);
-  margin: 0 0 var(--pgn-wgu-spacing-12);
+  display: flex; align-items: center;
+  gap: var(--pgn-wgu-spacing-8);
+  margin: 0;
 }
-.wgu-block-interactive__qual.is-inline { margin: 0 0 var(--pgn-wgu-spacing-8); font-size: var(--pgn-wgu-size-body-14); padding: 4px 10px; }
-.wgu-block-interactive__qual-icon { font-size: 1.1em; }
-.wgu-block-interactive__qual--correct   { color: var(--itv-correct);   background: #eafaea; }
-.wgu-block-interactive__qual--incorrect  { color: var(--itv-incorrect); background: #fdecec; }
-.wgu-block-interactive__qual--best       { color: #fff;                 background: var(--itv-accent); }
-.wgu-block-interactive__qual--custom     { color: #0b5566;              background: #e7f6f9; }
+.wgu-block-interactive__qual-icon {
+  width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none;
+}
+.wgu-block-interactive__qual-icon svg { width: 100%; height: 100%; }
+.wgu-block-interactive__qual-icon .material-symbols-outlined { font-size: 24px; }
+.wgu-block-interactive__qual-label {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+}
+.wgu-block-interactive__qual--correct   { color: #149418; }
+.wgu-block-interactive__qual--incorrect { color: #DB493D; }
+.wgu-block-interactive__qual--best      { color: #0070F0; }
+.wgu-block-interactive__qual--custom    { color: #0070F0; }
+
+.wgu-block-interactive__feedback-text {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-main-body);
+  margin: 0;
+}
+
+/* Legacy inline pill variant still used inside synthesis compare rows. */
+.wgu-block-interactive__qual.is-inline {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: var(--pgn-wgu-radius-rounded-pill, 999px);
+  font-size: var(--pgn-wgu-size-body-14);
+  margin: 0 0 var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__qual.is-inline .wgu-block-interactive__qual-icon {
+  width: 16px; height: 16px;
+}
+.wgu-block-interactive__qual--correct.is-inline   { background: #eafaea; }
+.wgu-block-interactive__qual--incorrect.is-inline { background: #fdecec; }
+.wgu-block-interactive__qual--best.is-inline      { color: #fff; background: var(--itv-accent); }
+.wgu-block-interactive__qual--custom.is-inline    { background: #e7f6f9; }
 
 /* ----------------------------------------------------------------------------
  * SYNTHESIS (§4.4)
@@ -546,12 +635,50 @@
 
 /* ----------------------------------------------------------------------------
  * TRANSITIONS (§7) — a single slide-in on screen change; option selection
- * updates in place (no slide). Removed entirely under reduced motion.
+ * updates in place (no slide). On step advance the modal background briefly
+ * flashes a slightly deeper mint (#D2EBEA) and settles back to the normal
+ * mint. Removed entirely under reduced motion.
  * --------------------------------------------------------------------------*/
-.wgu-block-interactive__slide-in { animation: itv-slide-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1); }
-@keyframes itv-slide-in { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Slide is mechanical (translateX only, no opacity): outgoing screen moves
+ * left by one viewport while the incoming screen moves in from the right, at
+ * the same rate, so it reads as a single push. Applied to __screen so the
+ * whole background (including behind the topbar) travels with it. */
+.wgu-block-interactive__screen.wgu-block-interactive__slide-leaving {
+  animation: itv-slide-leaving 800ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  will-change: transform;
+}
+.wgu-block-interactive__screen.wgu-block-interactive__slide-entering {
+  animation: itv-slide-entering 800ms cubic-bezier(0.65, 0, 0.35, 1);
+  will-change: transform;
+}
+@keyframes itv-slide-leaving {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+@keyframes itv-slide-entering {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Step-advance tint: the ENTIRE entering screen (top to bottom, edge to edge,
+ * including behind the topbar) starts at a slightly deeper mint and settles
+ * into the normal mint. Combined here with the slide because animation is a
+ * single-value property. */
+.wgu-block-interactive__screen.wgu-block-interactive__slide-entering.wgu-block-interactive__bg-pulse {
+  animation:
+    itv-slide-entering 800ms cubic-bezier(0.65, 0, 0.35, 1),
+    itv-bg-pulse       900ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+@keyframes itv-bg-pulse {
+  0%   { background-color: #D2EBEA; }
+  35%  { background-color: #D2EBEA; }       /* hold the tint through the slide  */
+  100% { background-color: var(--pgn-wgu-background-light-gray); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .wgu-block-interactive__slide-in { animation: none; }   /* backstop; JS also skips it */
+  .wgu-block-interactive__slide-leaving,
+  .wgu-block-interactive__slide-entering,
+  .wgu-block-interactive__bg-pulse { animation: none; }
 }
 
 /* Screen-reader only + live region */

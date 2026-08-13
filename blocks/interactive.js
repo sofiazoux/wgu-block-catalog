@@ -23,23 +23,19 @@
     return n;
   };
 
-  /* ---- inline SVG icons (currentColor for tone control) -------------------- */
-  const SVG_ARROW_OUTWARD =
-    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<path d="M7 17L17 7M17 7H9M17 7V15" stroke="currentColor" stroke-width="2" ' +
-    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const SVG_ARROW_FORWARD =
-    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2" ' +
-    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const SVG_REPLAY =
-    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<path d="M12 5V2L8 6L12 10V7C15.31 7 18 9.69 18 13C18 16.31 15.31 19 12 19C8.69 19 6 16.31 6 13C6 11.85 6.33 10.78 6.9 9.87L5.44 8.4C4.53 9.71 4 11.29 4 13C4 17.42 7.58 21 12 21C16.42 21 20 17.42 20 13C20 8.58 16.42 5 12 5Z" ' +
-    'fill="currentColor"/></svg>';
-  const SVG_CLOSE =
-    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" ' +
-    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  /* ---- Google Material Symbols (Outlined) — icons via <span class="…">name…</span>.
+   * The webfont is loaded in index.html with FILL=0 (outlined). Container CSS
+   * controls the font-size (and thus the icon size); color inherits. --------*/
+  const ico = (name) => `<span class="material-symbols-outlined" aria-hidden="true">${name}</span>`;
+  const SVG_ARROW_OUTWARD    = ico("arrow_outward");
+  const SVG_ARROW_FORWARD    = ico("arrow_forward");
+  const SVG_REPLAY           = ico("replay");
+  const SVG_CLOSE            = ico("close");
+  const SVG_KEYBOARD_RETURN  = ico("keyboard_return");
+  const SVG_CHECK_CIRCLE     = ico("check_circle");
+  const SVG_CANCEL           = ico("cancel");
+  const SVG_STAR             = ico("star");
+  const SVG_INFO             = ico("info");
 
   /* ---- offline cover image (self-contained SVG data URI) ------------------ */
   function cover(hueA, hueB, label) {
@@ -58,12 +54,12 @@
   /* ---- qualifier vocabulary (§1). Meaning always carries a text label
    *      (a11y §8: never icon/colour alone). ---------------------------------*/
   const QUAL = {
-    correct:   { label: "Correct", icon: "✓", tone: "correct" },
-    incorrect: { label: "Incorrect", icon: "✕", tone: "incorrect" },
-    best:      { label: "Best explanation", icon: "★", tone: "best" },
+    correct:   { label: "Correct",          icon: "✓", svg: SVG_CHECK_CIRCLE, tone: "correct" },
+    incorrect: { label: "Incorrect",        icon: "✕", svg: SVG_CANCEL,       tone: "incorrect" },
+    best:      { label: "Best explanation", icon: "★", svg: SVG_STAR,         tone: "best" },
   };
-  const qualOf = (q) => (typeof q === "string" ? (QUAL[q] || { label: q, icon: "●", tone: "custom" })
-                                               : { label: q.label, icon: q.icon || "●", tone: "custom" });
+  const qualOf = (q) => (typeof q === "string" ? (QUAL[q] || { label: q, icon: "●", svg: SVG_INFO, tone: "custom" })
+                                               : { label: q.label, icon: q.icon || "●", svg: q.svg || SVG_INFO, tone: "custom" });
 
   /* ========================================================================
    * ENGINE — createInteractive(config, opts) → { root, restart, focusLaunch }
@@ -156,7 +152,8 @@
         state.primary[i] = opt;             // primary = only selection (§R1)
         ex.add(opt);
         state.displayed[i] = opt;
-        toScreen("feedback", "Learner selects an option", "step-context", true);
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);   // shared element
+        toScreen("feedback", "Learner selects an option", "step-context", false);
         return;
       }
       // explore-all
@@ -164,7 +161,8 @@
       ex.add(opt);                          // permanent (§R2)
       state.displayed[i] = opt;
       if (state.screen === "context") {
-        toScreen("feedback", "Learner selects an option", "step-context", true);
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);   // shared element
+        toScreen("feedback", "Learner selects an option", "step-context", false);
       } else {
         // already in feedback → update pane in place, NO slide (§7, §R4)
         setEdge("step-feedback", "Learner selects another option (explore-all)", "step-feedback");
@@ -182,19 +180,33 @@
         state.step += 1;
         state.screen = "context";
         setEdge("step-feedback", "Continue (gate satisfied)", "step-context");
+        pulseIncoming = true;                   // colour flash on the entering content
         renderModalBody(!reduced());
         emit();
       }
     }
+    // Flag consumed by renderModalBody to apply the entering-content tint pulse
+    // only on step-advance transitions (not on select / return / restart / etc).
+    let pulseIncoming = false;
+    // Reference to the options element captured before a context↔feedback
+    // transition, so renderModalBody can FLIP it into its new position instead
+    // of sliding the whole screen.
+    let flipOptionsFrom = null;
     function goReturn() {
-      if (state.screen === "synthesis") {         // synthesis → last step (§10)
+      // From synthesis: back to the last step's feedback (§10, state preserved).
+      if (state.screen === "synthesis") {
         state.step = lastIndex;
         toScreen("feedback", "Return", "synthesis", true);
         return;
       }
-      if (state.step === 0) return;               // step 1 has no return target (§3)
-      state.step -= 1;                            // previous step's state preserved
-      toScreen("feedback", "Return", "step-context / step-feedback", true);
+      // From step-feedback: back to the same step's context so the learner can
+      // re-read the framing before choosing again (state preserved). The
+      // options element is FLIP'd from its feedback-left position back to the
+      // context-right position instead of sliding the whole screen.
+      if (state.screen === "feedback") {
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);
+        toScreen("context", "Return", "step-feedback", false);
+      }
     }
     function restart() {                          // §3 synthesis → step 1, cleared
       state.step = 0; state.primary = {}; state.explored = {}; state.displayed = {};
@@ -357,12 +369,74 @@
     function renderModalBody(slide) {
       if (!bodyEl) return;
       updateBar();
+
+      // Capture the FLIP source rect BEFORE the DOM changes (options are the
+      // shared element between context and feedback in the same step).
+      const flipFromRect = flipOptionsFrom ? flipOptionsFrom.getBoundingClientRect() : null;
+      flipOptionsFrom = null;
+
       let content;
       if (state.screen === "context") content = renderContext();
       else if (state.screen === "feedback") content = renderFeedback();
       else content = renderSynthesis();
-      bodyEl.replaceChildren(content);
-      if (slide) { content.classList.add(`${IB}__slide-in`); }
+
+      // Each render is wrapped in a full-size __screen so its background can
+      // extend behind the (absolute) topbar and be tinted independently. The
+      // topbar itself is drawn on top and never slides.
+      const screen = el("div", `${IB}__screen`);
+      screen.appendChild(content);
+
+      // Slide transition (§7): OUTGOING screen translates to the left and the
+      // INCOMING screen translates in from the right at the same rate — no
+      // opacity change, so it feels like one mechanical push. Any orphan
+      // screens from a rapid re-trigger are cleaned up first.
+      const existing = bodyEl.querySelectorAll(`.${IB}__screen`);
+      if (slide && !reduced() && existing.length > 0) {
+        for (let i = 0; i < existing.length - 1; i++) existing[i].remove();
+        const outgoing = existing[existing.length - 1];
+        const withPulse = pulseIncoming;
+        pulseIncoming = false;
+        bodyEl.appendChild(screen);
+        screen.classList.add(`${IB}__slide-entering`);
+        if (withPulse) screen.classList.add(`${IB}__bg-pulse`);
+        outgoing.classList.add(`${IB}__slide-leaving`);
+        const cleanup = () => {
+          if (outgoing.parentNode) outgoing.remove();
+          screen.classList.remove(`${IB}__slide-entering`, `${IB}__bg-pulse`);
+        };
+        screen.addEventListener("animationend", cleanup, { once: true });
+        setTimeout(cleanup, 1500);   // safety net if animationend never fires
+        return;
+      }
+
+      // Initial render or reduced-motion: no slide, just swap.
+      pulseIncoming = false;
+      bodyEl.replaceChildren(screen);
+
+      // FLIP: after the swap, if we captured a from-rect, invert the new
+      // options into the old position and animate to the identity so it reads
+      // as a smooth relocation. The surrounding content just changes.
+      if (flipFromRect && !reduced()) {
+        const newOptions = screen.querySelector(`.${IB}__options`);
+        if (newOptions) {
+          const to = newOptions.getBoundingClientRect();
+          const dx = flipFromRect.left - to.left;
+          const dy = flipFromRect.top - to.top;
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            newOptions.style.transition = "none";
+            newOptions.style.transform = `translate(${dx}px, ${dy}px)`;
+            void newOptions.offsetWidth;                           // force reflow
+            newOptions.style.transition = "transform 620ms cubic-bezier(0.4, 0, 0.2, 1)";
+            newOptions.style.transform = "";
+            const cleanup = () => {
+              newOptions.style.transition = "";
+              newOptions.style.transform = "";
+            };
+            newOptions.addEventListener("transitionend", cleanup, { once: true });
+            setTimeout(cleanup, 900);
+          }
+        }
+      }
     }
 
     /* ---- step-context (§4.2) ---- */
@@ -401,19 +475,33 @@
     /* ---- step-feedback (§4.3): options move to the left, feedback on right ---- */
     function renderFeedback() {
       const i = state.step, step = steps[i];
-      const c = el("div", `${IB}__content`);
+      const c = el("div", `${IB}__content ${IB}__content--feedback`);
+
+      // Left: keyboard_return button + step body (restate + options + action).
       const left = el("div", `${IB}__col ${IB}__col--step`);
-      left.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
-      left.appendChild(renderOptions(i));
-      left.appendChild(renderAction(i));
+      const ret = el("button", `${IB}__return-btn`);
+      ret.type = "button";
+      ret.setAttribute("aria-label", "Return to the context for this step");
+      ret.innerHTML = SVG_KEYBOARD_RETURN;
+      ret.addEventListener("click", goReturn);
+      left.appendChild(ret);
+
+      const body = el("div", `${IB}__step-body`);
+      body.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
+      body.appendChild(renderOptions(i));
+      body.appendChild(renderAction(i));
+      left.appendChild(body);
       c.appendChild(left);
 
+      // Right: qualifier row (icon + label) + response feedback text.
       const right = el("div", `${IB}__col ${IB}__col--feedback`);
       const opt = state.displayed[i];
       const o = step.options[opt];
       const q = qualOf(o.qualifier);
       const qEl = el("div", `${IB}__qual ${IB}__qual--${q.tone}`);
-      qEl.appendChild(el("span", `${IB}__qual-icon`, q.icon));
+      const qIcon = el("span", `${IB}__qual-icon`);
+      qIcon.innerHTML = q.svg;
+      qEl.appendChild(qIcon);
       qEl.appendChild(el("span", `${IB}__qual-label`, q.label));   // text label always (§8)
       right.appendChild(qEl);
       right.appendChild(el("p", `${IB}__feedback-text`, o.feedback));
