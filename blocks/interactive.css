@@ -75,6 +75,14 @@
 .workbench--interactive-demo > .rail,
 .workbench--interactive-demo > .spec { display: none; }
 
+/* Let the stage shrink with the browser window in demo mode so smaller
+ * screens don't get horizontal scroll. The block itself keeps scaling via
+ * its own aspect-ratio + clamp() padding. */
+.workbench--interactive-demo .stage {
+  max-width: 100%;
+  min-width: 320px;
+}
+
 /* ----------------------------------------------------------------------------
  * LAUNCH (in page, not modal) — §4.1
  * Rounded card on navy canvas: mint-tinted left panel (chip + intent + CTA)

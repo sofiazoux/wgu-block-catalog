@@ -516,7 +516,12 @@ function renderInteractiveDetail(b) {
   const widthValue = widthReadout.querySelector("b");
   const caption = h("p", "stage-caption", "");
   const stagePresets = h("div", "stage-presets");
-  [["Mobile", 360], ["Tablet", 760], ["Wide", 980]].forEach(([label, px]) => {
+  // Demo mode only shows the Wide preset since Mobile/Tablet layouts aren't
+  // ready to share yet.
+  const presetSizes = DEMO_MODE
+    ? [["Wide", 980]]
+    : [["Mobile", 360], ["Tablet", 760], ["Wide", 980]];
+  presetSizes.forEach(([label, px]) => {
     const bb = h("button", null, label); bb.type = "button";
     bb.addEventListener("click", () => { stage.style.width = px + "px"; updateWidth(); });
     stagePresets.appendChild(bb);
@@ -543,7 +548,8 @@ function renderInteractiveDetail(b) {
 
   // drag-to-resize (same pattern as the flexible detail)
   let dx = 0, dw = 0;
-  const onMove = (e) => { stage.style.width = Math.max(280, Math.min(2000, dw + (e.clientX - dx))) + "px"; updateWidth(); };
+  const dragMin = DEMO_MODE ? 320 : 280;
+  const onMove = (e) => { stage.style.width = Math.max(dragMin, Math.min(2000, dw + (e.clientX - dx))) + "px"; updateWidth(); };
   const onUp = (e) => { try { handle.releasePointerCapture(e.pointerId); } catch (_) {} window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); handle.classList.remove("is-dragging"); };
   handle.addEventListener("pointerdown", (e) => { e.preventDefault(); dx = e.clientX; dw = stage.offsetWidth; try { handle.setPointerCapture(e.pointerId); } catch (_) {} handle.classList.add("is-dragging"); window.addEventListener("pointermove", onMove); window.addEventListener("pointerup", onUp); });
 
