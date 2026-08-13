@@ -374,6 +374,7 @@
   width: 100%;
   padding: 0;
   border: none;
+  border-radius: 8px;                          /* rounds the :focus-visible outline */
   background: transparent;
   cursor: pointer;
   filter: drop-shadow(0 10px 17.5px rgba(177, 188, 201, 0.3));
@@ -415,18 +416,44 @@
 }
 .wgu-block-interactive__option-arrow svg { width: 100%; height: 100%; }
 
-/* Hover / currently-displayed → expand strip to 69px box with white arrow. */
+/* --- HOVER / FOCUS / SELECTED-ACTIVE — indicator expands to 69px + arrow -- */
 .wgu-block-interactive__option:hover:not(.is-locked) .wgu-block-interactive__option-indicator,
+.wgu-block-interactive__option:focus-visible:not(.is-locked) .wgu-block-interactive__option-indicator,
 .wgu-block-interactive__option.is-displayed .wgu-block-interactive__option-indicator {
   width: 69px;
 }
 .wgu-block-interactive__option:hover:not(.is-locked) .wgu-block-interactive__option-arrow,
+.wgu-block-interactive__option:focus-visible:not(.is-locked) .wgu-block-interactive__option-arrow,
 .wgu-block-interactive__option.is-displayed .wgu-block-interactive__option-arrow {
   opacity: 1;
 }
-.wgu-block-interactive__option.is-explored .wgu-block-interactive__option-indicator {
-  background: color-mix(in oklab, var(--itv-chip) 65%, white);   /* softer for revisitable */
+
+/* --- PREVIOUSLY SELECTED — explored but not the one currently displayed.
+ * 2px teal inset stroke on the content pane; no drop shadow (Figma). ------- */
+.wgu-block-interactive__option.is-explored:not(.is-displayed) {
+  filter: none;
 }
+.wgu-block-interactive__option.is-explored:not(.is-displayed) .wgu-block-interactive__option-content {
+  box-shadow: inset 0 0 0 2px var(--itv-chip);
+}
+
+/* --- FOCUS — 2px coral outline around the whole option, indicator expanded.
+ * The block's default focus ring is overridden here so options get the coral
+ * treatment from Figma. ---------------------------------------------------- */
+.wgu-block-interactive__option:focus-visible {
+  outline: 2px solid var(--pgn-wgu-background-accent-coral);
+  outline-offset: 0;
+}
+
+/* --- SELECTED / ACTIVE — the option currently displayed in feedback. Full
+ * teal fill on the content pane + white text, indicator already expanded. -- */
+.wgu-block-interactive__option.is-displayed .wgu-block-interactive__option-content {
+  background: var(--itv-chip);
+  color: var(--pgn-wgu-color-text-pure-white);
+  box-shadow: none;
+}
+
+/* --- LOCKED (choose-one, non-primary options after selection) ------------- */
 .wgu-block-interactive__option.is-locked { cursor: default; }
 .wgu-block-interactive__option.is-locked .wgu-block-interactive__option-indicator {
   background: #cbd5db;

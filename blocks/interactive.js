@@ -436,10 +436,12 @@
         const lockedThis = locked && state.primary[i] !== idx;
         if (lockedThis) { b.setAttribute("aria-disabled", "true"); b.classList.add("is-locked"); }
 
-        // Content pane (white card with the option text on the left).
+        // Content pane (white card with the option text on the left). The
+        // "explored" and "locked" states are announced to screen readers only
+        // — the teal border / faded look already communicates them visually.
         const content = el("span", `${IB}__option-content`);
         content.appendChild(el("span", `${IB}__option-text`, o.label));
-        if (explored) content.appendChild(srBadge("explored", "✓"));
+        if (explored) content.appendChild(srBadge("explored", ""));
         if (lockedThis) content.appendChild(srBadge("unavailable", ""));  // announced (§8)
         b.appendChild(content);
 
