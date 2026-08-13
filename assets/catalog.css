@@ -69,8 +69,7 @@ button { font-family: inherit; }
 .mono { font-family: var(--c-mono); }
 
 /* ----------------------------------------------------------------------------
- * TOP BAR — persistent. Carries the back link and the standing "proposal"
- * status framing (§11).
+ * TOP BAR — persistent, global brand only.
  * --------------------------------------------------------------------------*/
 .topbar {
   display: flex;
@@ -174,27 +173,9 @@ button { font-family: inherit; }
 }
 .detail__title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .detail__title { font-size: 17px; letter-spacing: -0.02em; margin: 0; }
-
-/* Framing: one-line summary that expands for the full nuance (§ proportion). */
-.framing { font-size: 13px; color: var(--c-ink-2); min-width: 0; }
-.framing > summary {
-  cursor: pointer; list-style: none; color: var(--c-ink-2);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.framing > summary::-webkit-details-marker { display: none; }
-.framing > summary strong { color: var(--c-ink); font-weight: 600; }
-/* Disclosure caret — the only affordance that the framing expands. */
-.framing > summary::before {
-  content: "▸";
-  display: inline-block;
-  margin-right: 6px;
-  color: var(--c-muted);
-  font-size: 10px;
-}
-.framing[open] > summary::before { content: "▾"; }
-.framing[open] > summary { white-space: normal; }
-.framing > p { margin: 8px 0 0; max-width: 90ch; }
-.framing > p em { color: var(--c-ink); font-style: italic; }
+/* Framing paragraph — only the deferred (Interactive) detail still uses one. */
+.detail__framing { font-size: 13px; color: var(--c-ink-2); margin: 8px 0 0; max-width: 90ch; }
+.detail__framing strong { color: var(--c-ink); font-weight: 600; }
 
 /* The working area: controls rail | stage | spec panel. */
 .workbench {

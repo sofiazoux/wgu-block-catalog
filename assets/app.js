@@ -165,19 +165,12 @@ function renderDetail(id) {
 
   const detail = h("div", "detail");
 
-  // Header — compact. Back-link sits above the title; one-line framing that
-  // expands for the full nuance.
+  // Header — compact: back-link above the title, then title + status.
   const header = h("div", "detail__header");
   header.appendChild(backLink());
   const titleRow = h("div", "detail__title-row");
   titleRow.appendChild(h("h1", "detail__title", b.name));
   titleRow.appendChild(statusBadge(b.status, b.statusLabel));
-  const framing = document.createElement("details");
-  framing.className = "framing";
-  framing.innerHTML =
-    '<summary><strong>Rendered proposal</strong> — the design and its rules, not an authoring tool.</summary>' +
-    '<p>It shows the design and the rules it obeys, not how authors produce it. Controls describe <em>states of the content</em>, not actions an author takes. Pending feedback from WGU and OpenCraft.</p>';
-  titleRow.appendChild(framing);
   header.appendChild(titleRow);
   detail.appendChild(header);
 
