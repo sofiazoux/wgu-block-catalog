@@ -23,6 +23,24 @@
     return n;
   };
 
+  /* ---- inline SVG icons (currentColor for tone control) -------------------- */
+  const SVG_ARROW_OUTWARD =
+    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M7 17L17 7M17 7H9M17 7V15" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const SVG_ARROW_FORWARD =
+    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const SVG_REPLAY =
+    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M12 5V2L8 6L12 10V7C15.31 7 18 9.69 18 13C18 16.31 15.31 19 12 19C8.69 19 6 16.31 6 13C6 11.85 6.33 10.78 6.9 9.87L5.44 8.4C4.53 9.71 4 11.29 4 13C4 17.42 7.58 21 12 21C16.42 21 20 17.42 20 13C20 8.58 16.42 5 12 5Z" ' +
+    'fill="currentColor"/></svg>';
+  const SVG_CLOSE =
+    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   /* ---- offline cover image (self-contained SVG data URI) ------------------ */
   function cover(hueA, hueB, label) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
@@ -187,6 +205,15 @@
       if (dlg) (dlg.querySelector("h2") || dlg).focus();
       emit();
     }
+    function goReplay() {                        // stepper replay → step 1, state preserved
+      if (state.step === 0 && state.screen !== "synthesis") return;
+      const from = state.screen === "synthesis" ? "synthesis" : "step-" + (state.screen === "context" ? "context" : "feedback");
+      state.step = 0;
+      state.screen = "context";
+      setEdge(from, "Replay to step 1", "step-context");
+      renderModalBody(!reduced());
+      emit();
+    }
 
     /* ---- live region announcements (§8) ----------------------------------- */
     let liveEl = null;
@@ -208,11 +235,13 @@
         viewport.appendChild(modal);
         renderModalBody(false);
       }
-      // background inert while the dialog is open (§8)
+      // background inert while the dialog is open (§8) + viewport flag so CSS
+      // can drop the navy padding and let the modal cover the full stage.
       const launch = viewport.querySelector(`.${IB}__launch`);
       const open = state.screen !== "launch";
       launch.toggleAttribute("inert", open);
       launch.setAttribute("aria-hidden", String(open));
+      viewport.classList.toggle("is-modal-open", open);
     }
 
     /* ---- launch (in page, not modal) (§4.1) ---- */
@@ -253,8 +282,8 @@
       return wrap;
     }
 
-    /* ---- modal shell: persistent top bar + a body we re-render (§4.2) ---- */
-    let bodyEl = null, stepIndEl = null, returnBtn = null;
+    /* ---- modal shell: persistent top bar (name + stepper + close) + body -- */
+    let bodyEl = null, dotsEl = null, replayBtn = null;
     function renderModal() {
       const modal = el("div", `${IB}__modal`);
       modal.setAttribute("role", "dialog");
@@ -262,23 +291,32 @@
       modal.setAttribute("aria-labelledby", `${IB}-dlg-title`);
       modal.tabIndex = -1;
 
-      const bar = el("div", `${IB}__bar`);           // NEVER animates (§4.2, §7)
-      bar.appendChild(el("span", `${IB}__bar-name`, config.name));
+      // Top bar: transparent, 3-column flex (name, navy stepper pill, close).
+      const bar = el("div", `${IB}__topbar`);        // NEVER animates (§4.2, §7)
 
-      const ind = el("div", `${IB}__stepind`);
-      returnBtn = el("button", `${IB}__return`, "‹ Return");
-      returnBtn.type = "button";
-      returnBtn.addEventListener("click", goReturn);
-      ind.appendChild(returnBtn);
-      stepIndEl = el("span", `${IB}__stepind-label`);
-      ind.appendChild(stepIndEl);
-      bar.appendChild(ind);
+      const nameEl = el("div", `${IB}__topbar-name`);
+      nameEl.appendChild(el("span", null, config.name));
+      bar.appendChild(nameEl);
 
-      const close = el("button", `${IB}__close`, "✕");
+      // Navy stepper pill hanging from the top edge (rounded bottom corners).
+      const stepper = el("div", `${IB}__stepper`);
+      replayBtn = el("button", `${IB}__replay`);
+      replayBtn.type = "button";
+      replayBtn.setAttribute("aria-label", "Replay from step 1");
+      replayBtn.innerHTML = SVG_REPLAY;
+      replayBtn.addEventListener("click", goReplay);
+      stepper.appendChild(replayBtn);
+      dotsEl = el("div", `${IB}__stepper-dots`);
+      stepper.appendChild(dotsEl);
+      bar.appendChild(stepper);
+
+      const close = el("button", `${IB}__topbar-close`);
       close.type = "button";
-      close.setAttribute("aria-label", "Close");
+      close.setAttribute("aria-label", "Close interactive");
+      close.innerHTML = SVG_CLOSE;
       close.addEventListener("click", () => closeModal("step-" + (state.screen === "context" ? "context" : "feedback")));
       bar.appendChild(close);
+
       modal.appendChild(bar);
 
       bodyEl = el("div", `${IB}__body`);
@@ -303,10 +341,17 @@
     }
 
     function updateBar() {
-      // Step indicator communicates position (§8). Return hidden on step 1 (§3).
-      stepIndEl.textContent = `Step ${state.step + 1} of ${steps.length}`;
-      const noReturn = state.step === 0 && state.screen !== "synthesis";
-      returnBtn.hidden = noReturn;
+      // Stepper dots: N per steps count (up to 5). Active dot = current step.
+      dotsEl.replaceChildren();
+      for (let idx = 0; idx < steps.length; idx++) {
+        if (idx > 0) dotsEl.appendChild(el("span", `${IB}__stepper-line`));
+        const dot = el("div", `${IB}__stepper-dot`);
+        if (idx === state.step && state.screen !== "synthesis") dot.classList.add("is-active");
+        dot.appendChild(el("span", `${IB}__stepper-num`, String(idx + 1)));
+        dotsEl.appendChild(dot);
+      }
+      // Replay is a no-op / hidden on step 1 since we're already there.
+      replayBtn.hidden = state.step === 0 && state.screen !== "synthesis";
     }
 
     function renderModalBody(slide) {
@@ -324,17 +369,31 @@
     function renderContext() {
       const i = state.step, step = steps[i];
       const c = el("div", `${IB}__content`);
-      const left = el("div", `${IB}__col ${IB}__col--text`);
-      left.appendChild(el("h2", `${IB}__ctx-title`, step.contextTitle));
-      left.querySelector("h2").id = `${IB}-dlg-title`;
-      left.appendChild(el("p", `${IB}__ctx-desc`, step.contextDescription));
-      left.appendChild(el("p", `${IB}__do-label`, "What you need to do")); // fixed label (§6)
-      left.appendChild(el("p", `${IB}__task`, step.task));
+      const left = el("div", `${IB}__col ${IB}__col--context`);
+
+      const ctx = el("div", `${IB}__ctx-frame`);
+      const title = el("h2", `${IB}__ctx-title`, step.contextTitle);
+      title.id = `${IB}-dlg-title`;
+      ctx.appendChild(title);
+      ctx.appendChild(el("p", `${IB}__ctx-desc`, step.contextDescription));
+      left.appendChild(ctx);
+
+      // "What you need to do" cue — chip icon + label (fixed §6) + task text.
+      const taskFrame = el("div", `${IB}__task-frame`);
+      const cue = el("div", `${IB}__task-cue`);
+      const cueIcon = el("span", `${IB}__task-icon`);
+      cueIcon.innerHTML = SVG_ARROW_OUTWARD;
+      cue.appendChild(cueIcon);
+      cue.appendChild(el("span", `${IB}__task-cue-text`, "What you need to do"));
+      taskFrame.appendChild(cue);
+      taskFrame.appendChild(el("p", `${IB}__task-desc`, step.task));
+      left.appendChild(taskFrame);
       c.appendChild(left);
 
-      const right = el("div", `${IB}__col ${IB}__col--options`);
+      const right = el("div", `${IB}__col ${IB}__col--step`);
       right.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
-      right.appendChild(renderOptions(i));   // nothing selected yet
+      right.appendChild(renderOptions(i));
+      right.appendChild(renderAction(i));    // shown disabled until an option is picked
       c.appendChild(right);
       return c;
     }
@@ -343,7 +402,7 @@
     function renderFeedback() {
       const i = state.step, step = steps[i];
       const c = el("div", `${IB}__content`);
-      const left = el("div", `${IB}__col ${IB}__col--options`);
+      const left = el("div", `${IB}__col ${IB}__col--step`);
       left.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
       left.appendChild(renderOptions(i));
       left.appendChild(renderAction(i));
@@ -377,11 +436,20 @@
         const lockedThis = locked && state.primary[i] !== idx;
         if (lockedThis) { b.setAttribute("aria-disabled", "true"); b.classList.add("is-locked"); }
 
-        b.appendChild(el("span", `${IB}__option-text`, o.label));
-        const badges = el("span", `${IB}__option-badges`);
-        if (explored) badges.appendChild(srBadge("explored", "✓"));
-        if (lockedThis) badges.appendChild(srBadge("unavailable", ""));  // announced (§8)
-        b.appendChild(badges);
+        // Content pane (white card with the option text on the left).
+        const content = el("span", `${IB}__option-content`);
+        content.appendChild(el("span", `${IB}__option-text`, o.label));
+        if (explored) content.appendChild(srBadge("explored", "✓"));
+        if (lockedThis) content.appendChild(srBadge("unavailable", ""));  // announced (§8)
+        b.appendChild(content);
+
+        // Right indicator: default 10px teal strip → 69px teal box with arrow
+        // on hover / when currently displayed (§R5).
+        const ind = el("span", `${IB}__option-indicator`);
+        const arrow = el("span", `${IB}__option-arrow`);
+        arrow.innerHTML = SVG_ARROW_FORWARD;
+        ind.appendChild(arrow);
+        b.appendChild(ind);
 
         b.addEventListener("click", () => {
           if (b.getAttribute("aria-disabled") === "true") return;   // locked read-only
@@ -535,14 +603,15 @@
 
   const step = (over) => Object.assign({
     mode: "choose-one",
-    contextTitle: "A situation to read",
-    contextDescription: "A learner is deciding how to act. Weigh what the moment demands against what the person tends to do.",
-    task: "Choose the response that best reflects sound judgement in this situation.",
-    taskRestatement: "Select the response you think is best",
+    contextTitle: "A learner reads a situation whose cues pull against long-held habits of response",
+    contextDescription: "Someone is deciding how to act in a moment where the situation and their disposition do not fully agree. Weigh what this specific moment seems to demand against what the person tends to do by default. Consider what each response reveals about the reasoning behind it, and what the choice would signal to someone watching closely.",
+    task: "Choose the response you believe best reflects sound judgement in this situation. There is no single correct answer — the point is to make your reasoning explicit to yourself, and to notice when a habitual response would miss what the moment actually requires.",
+    taskRestatement: "Briefly restate the learner task for this step.",
     options: [
-      q("Act on the situation's cues", "best", "Strong choice — you read the moment before defaulting to habit."),
-      q("Rely on past experience", "incorrect", "Experience helps, but here the situation has changed in ways habit misses."),
-      q("Wait for more information", "correct", "Reasonable — though at some point judgement under uncertainty is the task."),
+      q("Read the situation carefully and act on the specific cues in front of you before defaulting to what usually works in similar cases", "best", "Strong choice — you read the moment before defaulting to habit, which is exactly the judgement this step is testing."),
+      q("Rely on the experience you have built up across many similar situations, trusting the pattern you have seen before", "incorrect", "Experience helps, but here the situation has shifted in ways that habitual responses tend to miss. That is the failure mode this step surfaces."),
+      q("Pause and gather more information before committing to any single course of action, even if that means acting later than others would", "correct", "Reasonable — though at some point judgement under uncertainty becomes the task, because waiting is not always available."),
+      q("Consult with someone who has more distance from the situation and can weigh the cues without the pressure you are feeling in the moment", "correct", "A sound instinct in many cases. The trade-off is time and the fact that outside perspective can miss what only presence in the moment reveals."),
     ],
   }, over);
   const exploreStep = (over) => step(Object.assign({

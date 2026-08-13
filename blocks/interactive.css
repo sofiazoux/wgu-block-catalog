@@ -168,110 +168,297 @@
 .wgu-block-interactive :focus-visible { outline: 3px solid var(--pgn-wgu-color-icon-lake); outline-offset: 2px; }
 
 /* ----------------------------------------------------------------------------
- * MODAL DIALOG — covers the viewport (§3, §8)
+ * MODAL DIALOG — full-screen over the stage (§3, §8)
+ *
+ * When state.screen ≠ "launch", JS sets .is-modal-open on the viewport. The
+ * navy padding drops to 0, the launch card is hidden, and the viewport takes
+ * on the modal's Figma aspect (1280/768) so the dialog covers the whole stage
+ * with a light-gray mint background.
  * --------------------------------------------------------------------------*/
+.wgu-block-interactive__viewport.is-modal-open {
+  padding: 0;
+  aspect-ratio: 1280 / 768;
+  background: var(--pgn-wgu-background-light-gray);
+}
+.wgu-block-interactive__viewport.is-modal-open .wgu-block-interactive__launch {
+  display: none;
+}
+
 .wgu-block-interactive__modal {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  background: var(--pgn-wgu-background-pure-white);
+  background: var(--pgn-wgu-background-light-gray);
 }
-/* Top bar — persistent, never animates (§4.2, §7). */
-.wgu-block-interactive__bar {
+
+/* ---- Top bar: transparent, 3-column flex (name / stepper pill / close) ----
+ * The navy stepper "pill" hangs from the top edge (rounded bottom corners). */
+.wgu-block-interactive__topbar {
   flex: none;
-  display: flex; align-items: center; gap: var(--pgn-wgu-spacing-16);
-  padding: 0 var(--pgn-wgu-spacing-24);
-  height: 56px;
-  background: var(--itv-bar);
+  display: flex;
+  align-items: flex-start;
+  height: 64px;
+  background: transparent;
+}
+.wgu-block-interactive__topbar-name {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 64px;
+  padding: 0 var(--pgn-wgu-spacing-32);
+  display: flex; align-items: center;
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 34px;
+  color: var(--itv-chip);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wgu-block-interactive__stepper {
+  flex: none;
+  display: flex; align-items: center;
+  gap: var(--pgn-wgu-spacing-16);
+  padding: 10px var(--pgn-wgu-spacing-16);
+  background: var(--pgn-wgu-background-main-navy);
+  border-radius: 0 0 16px 16px;
   color: #fff;
 }
-.wgu-block-interactive__bar-name { font-weight: var(--pgn-wgu-weight-bold); font-size: var(--pgn-wgu-size-body-16); }
-.wgu-block-interactive__stepind { display: flex; align-items: center; gap: var(--pgn-wgu-spacing-12); margin-left: auto; }
-.wgu-block-interactive__stepind-label { font-size: var(--pgn-wgu-size-body-14); opacity: 0.9; }
-.wgu-block-interactive__return,
-.wgu-block-interactive__close {
+.wgu-block-interactive__replay {
   appearance: none; -webkit-appearance: none;
-  background: transparent; border: 1px solid rgba(255,255,255,0.35);
-  color: #fff; border-radius: var(--pgn-wgu-radius-base);
-  padding: 4px 10px; cursor: pointer; font-size: var(--pgn-wgu-size-body-14);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: currentColor;
+  opacity: 0.85;
+  cursor: pointer;
 }
-.wgu-block-interactive__return[hidden] { display: none; }
-.wgu-block-interactive__return:hover,
-.wgu-block-interactive__close:hover { background: rgba(255,255,255,0.14); }
-.wgu-block-interactive__close { margin-left: var(--pgn-wgu-spacing-8); }
+.wgu-block-interactive__replay[hidden] { display: none; }
+.wgu-block-interactive__replay:hover { opacity: 1; }
+.wgu-block-interactive__replay svg { width: 100%; height: 100%; }
+.wgu-block-interactive__stepper-dots {
+  display: flex; align-items: center;
+}
+.wgu-block-interactive__stepper-dot {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: transparent;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+  flex: none;
+}
+.wgu-block-interactive__stepper-dot.is-active {
+  background: var(--itv-chip);
+  border-color: var(--itv-chip);
+}
+.wgu-block-interactive__stepper-line {
+  width: 12px; height: 1px;
+  background: currentColor;
+  opacity: 0.35;
+  flex: none;
+}
+.wgu-block-interactive__topbar-close {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 64px;
+  padding: 0 var(--pgn-wgu-spacing-32);
+  display: flex; align-items: center; justify-content: flex-end;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--pgn-wgu-color-icon-navy);
+}
+.wgu-block-interactive__topbar-close svg { width: 32px; height: 32px; }
 
-.wgu-block-interactive__body { flex: 1; overflow: auto; }
+.wgu-block-interactive__body {
+  flex: 1;
+  overflow: auto;
+  padding-top: var(--pgn-wgu-spacing-48);   /* header 64 + 48 = 112 (Figma) */
+}
 
-/* Two-column content (§4.2/§4.3) */
+/* ---- Two-column content shell (§4.2/§4.3) ------------------------------- */
 .wgu-block-interactive__content {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--pgn-wgu-spacing-48);
-  padding: var(--pgn-wgu-spacing-48);
+  gap: 0;
+  padding: 0;
   min-height: 100%;
 }
-.wgu-block-interactive__col { min-width: 0; }
-.wgu-block-interactive__col--feedback,
-.wgu-block-interactive__col--text { align-self: start; }
+.wgu-block-interactive__col { min-width: 0; display: flex; flex-direction: column; }
+.wgu-block-interactive__col--context {
+  padding: 0 var(--pgn-wgu-spacing-24) 0 var(--pgn-wgu-spacing-48);
+  gap: var(--pgn-wgu-spacing-48);
+}
+.wgu-block-interactive__col--step {
+  padding: 0 var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);
+  gap: var(--pgn-wgu-spacing-24);
+}
+.wgu-block-interactive__col--feedback {
+  padding: 0 var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);
+  gap: var(--pgn-wgu-spacing-24);
+  align-self: start;
+}
 
-.wgu-block-interactive__ctx-title,
-.wgu-block-interactive__synth-title {
-  font-family: var(--pgn-wgu-family-sora);
-  font-weight: var(--pgn-wgu-weight-bold);
-  font-size: var(--pgn-wgu-size-h4);
-  line-height: var(--pgn-wgu-line-height-h4);
-  color: var(--pgn-wgu-color-text-main-navy);
-  margin: 0 0 var(--pgn-wgu-spacing-12);
+/* ---- Context Frame (left col) ------------------------------------------- */
+.wgu-block-interactive__ctx-frame {
+  display: flex; flex-direction: column; gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__ctx-title {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 32px;
+  color: var(--pgn-wgu-color-text-main-navy);   /* #0050aa */
+  margin: 0;
 }
 .wgu-block-interactive__ctx-desc,
-.wgu-block-interactive__task,
-.wgu-block-interactive__restate,
-.wgu-block-interactive__feedback-text { font-size: var(--pgn-wgu-size-body-16); line-height: var(--pgn-wgu-line-height-body-16); }
-.wgu-block-interactive__do-label {
-  font-size: var(--pgn-wgu-size-body-12, 12px); font-weight: var(--pgn-wgu-weight-bold);
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--pgn-wgu-color-text-secondary);
-  margin: var(--pgn-wgu-spacing-24) 0 var(--pgn-wgu-spacing-8);
+.wgu-block-interactive__task-desc {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-main-body);
+  margin: 0;
 }
-.wgu-block-interactive__restate { font-weight: var(--pgn-wgu-weight-bold); color: var(--pgn-wgu-color-text-main-navy); margin: 0 0 var(--pgn-wgu-spacing-16); }
 
-/* ---- Options — five visual states (§R5) ---- */
-.wgu-block-interactive__options { display: flex; flex-direction: column; gap: var(--pgn-wgu-spacing-12); }
+/* ---- Learner Task cue: chip icon + label + task description ------------- */
+.wgu-block-interactive__task-frame {
+  display: flex; flex-direction: column; gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__task-cue {
+  display: flex; align-items: center; gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__task-icon {
+  width: 40px; height: 40px;
+  flex: none;
+  background: rgba(57, 159, 176, 0.05);
+  border: 1px solid rgba(57, 159, 176, 0.5);
+  border-radius: 16px 16px 16px 4px;    /* same asymmetric chip corners as launch */
+  color: var(--itv-chip);
+  display: flex; align-items: center; justify-content: center;
+}
+.wgu-block-interactive__task-icon svg { width: 19.2px; height: 19.2px; }
+.wgu-block-interactive__task-cue-text {
+  flex: 1 1 0; min-width: 0;
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--itv-chip);
+}
+
+/* ---- Right col: restate + options + action ------------------------------ */
+.wgu-block-interactive__restate {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--itv-chip);
+  margin: 0;
+}
+
+/* ---- Options (§R5) — default 10px teal strip, hover 69px teal box + arrow -*/
+.wgu-block-interactive__options {
+  display: flex; flex-direction: column;
+  gap: var(--pgn-wgu-spacing-16);
+}
 .wgu-block-interactive__option {
   appearance: none; -webkit-appearance: none;
-  display: flex; align-items: center; gap: var(--pgn-wgu-spacing-12);
-  text-align: left; width: 100%;
+  display: flex; align-items: stretch;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 10px 17.5px rgba(177, 188, 201, 0.3));
+  transition: filter 200ms ease;
+}
+.wgu-block-interactive__option-content {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 102px;
+  display: flex; align-items: center;
+  padding: 16px 24px;
   background: var(--pgn-wgu-background-pure-white);
-  border: 1.5px solid var(--pgn-wgu-color-border-form);
-  border-radius: var(--pgn-wgu-radius-lg);
-  padding: 14px 16px; cursor: pointer;
+  border-radius: 8px 0 0 8px;
   font-family: var(--pgn-wgu-family-lato);
-  font-size: var(--pgn-wgu-size-body-16); line-height: var(--pgn-wgu-line-height-body-16);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
   color: var(--pgn-wgu-color-text-main-body);
+  text-align: left;
 }
-.wgu-block-interactive__option:hover { border-color: var(--pgn-wgu-color-border-blue); background: var(--itv-soft); }   /* hover */
-.wgu-block-interactive__option.is-explored { border-color: var(--pgn-wgu-color-icon-lake); }                            /* explored */
-.wgu-block-interactive__option.is-displayed {                                                                          /* currently displayed */
-  border-color: var(--itv-accent);
-  box-shadow: inset 0 0 0 1.5px var(--itv-accent);
-  background: var(--pgn-wgu-background-pure-white);
-}
-.wgu-block-interactive__option.is-locked { cursor: default; opacity: 0.6; }
-.wgu-block-interactive__option.is-locked:hover { border-color: var(--pgn-wgu-color-border-form); background: var(--pgn-wgu-background-pure-white); }
 .wgu-block-interactive__option-text { flex: 1; }
-.wgu-block-interactive__option-badges { display: flex; gap: 6px; flex: none; }
-.wgu-block-interactive__badge-icon { color: var(--pgn-wgu-color-icon-lake); font-weight: var(--pgn-wgu-weight-bold); }
+.wgu-block-interactive__option-indicator {
+  flex: none;
+  width: 10px;
+  align-self: stretch;
+  min-height: 102px;
+  background: var(--itv-chip);
+  border-radius: 0 8px 8px 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  overflow: hidden;
+  transition: width 180ms ease;
+}
+.wgu-block-interactive__option-arrow {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  opacity: 0;
+  transition: opacity 180ms ease 40ms;
+}
+.wgu-block-interactive__option-arrow svg { width: 100%; height: 100%; }
 
-/* ---- Action button + disabled reason (§8) ---- */
-.wgu-block-interactive__action { margin-top: var(--pgn-wgu-spacing-24); }
+/* Hover / currently-displayed → expand strip to 69px box with white arrow. */
+.wgu-block-interactive__option:hover:not(.is-locked) .wgu-block-interactive__option-indicator,
+.wgu-block-interactive__option.is-displayed .wgu-block-interactive__option-indicator {
+  width: 69px;
+}
+.wgu-block-interactive__option:hover:not(.is-locked) .wgu-block-interactive__option-arrow,
+.wgu-block-interactive__option.is-displayed .wgu-block-interactive__option-arrow {
+  opacity: 1;
+}
+.wgu-block-interactive__option.is-explored .wgu-block-interactive__option-indicator {
+  background: color-mix(in oklab, var(--itv-chip) 65%, white);   /* softer for revisitable */
+}
+.wgu-block-interactive__option.is-locked { cursor: default; }
+.wgu-block-interactive__option.is-locked .wgu-block-interactive__option-indicator {
+  background: #cbd5db;
+}
+.wgu-block-interactive__option.is-locked .wgu-block-interactive__option-content { opacity: 0.6; }
+
+/* ---- Action button — outlined pill, disabled by default (§8) ------------ */
+.wgu-block-interactive__action {
+  margin-top: auto;                              /* push to bottom of the right col */
+  display: flex; justify-content: flex-end;
+}
 .wgu-block-interactive__action-btn {
   appearance: none; -webkit-appearance: none;
-  font-family: var(--pgn-wgu-family-lato); font-weight: var(--pgn-wgu-weight-bold);
-  font-size: var(--pgn-wgu-size-body-16); color: #fff;
-  background: var(--itv-accent); border: none;
-  border-radius: var(--pgn-wgu-radius-rounded-pill);
-  padding: 12px 28px; cursor: pointer;
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 24px;
+  color: #fff;
+  background: var(--itv-chip);
+  border: 1px solid var(--itv-chip);
+  border-radius: 999px;
+  padding: 12px 32px;
+  cursor: pointer;
 }
-.wgu-block-interactive__action-btn:hover { background: var(--pgn-wgu-color-button-hover); }
+.wgu-block-interactive__action-btn:hover { filter: brightness(0.94); }
+.wgu-block-interactive__action-btn[aria-disabled="true"] {
+  background: transparent;
+  border-color: #aaa;
+  color: #aaa;
+  cursor: not-allowed;
+}
+.wgu-block-interactive__action-hint { display: none; }  /* Figma removes the inline hint */
 .wgu-block-interactive__action-btn[aria-disabled="true"] {
   background: var(--pgn-wgu-color-button-disabled); cursor: not-allowed;
 }
