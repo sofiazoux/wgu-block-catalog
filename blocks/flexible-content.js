@@ -222,14 +222,14 @@ function renderRows(rows) {
  * deliberately is what builds confidence.
  * ==========================================================================*/
 const PRESETS = [
-  /* ---------- Happy path ---------- */
+  /* ---------- Default (no category) + Optional components ---------- */
   {
-    id: "prose", group: "Happy path", label: "Plain prose",
+    id: "prose", group: "Default", label: "Plain prose",
     description: "No side elements. Full reading measure throughout.",
     content: [h2("What shapes behaviour"), p(T.long), p(T.med), p(T.xlong)],
   },
   {
-    id: "image-mid", group: "Happy path", label: "Image, wrapping",
+    id: "image-mid", group: "Optional component", label: "Image, wrapping",
     description: "A medium image anchored to a substantive passage; text wraps.",
     content: [
       h2("What shapes behaviour"), p(T.long),
@@ -238,7 +238,7 @@ const PRESETS = [
     ],
   },
   {
-    id: "callout-mid", group: "Happy path", label: "Callout, wrapping",
+    id: "callout-mid", group: "Optional component", label: "Callout, wrapping",
     description: "A callout in the side slot instead of an image; text wraps.",
     content: [
       h2("What shapes behaviour"), p(T.long),
@@ -247,7 +247,7 @@ const PRESETS = [
     ],
   },
   {
-    id: "hero", group: "Happy path", label: "Hero image",
+    id: "hero", group: "Optional component", label: "Hero image",
     description: "A full-width principal image, 16:9, spanning multiple columns.",
     content: [
       h2("What shapes behaviour"),
@@ -256,12 +256,12 @@ const PRESETS = [
     ],
   },
   {
-    id: "media-wide", group: "Happy path", label: "Wide media",
+    id: "media-wide", group: "Optional component", label: "Wide media",
     description: "Media spanning the text column plus the margin area.",
     content: [p(T.long), media("wide", PHOTOS.wide, "Wide media reaches into the right margin."), p(T.long)],
   },
   {
-    id: "media-bleed", group: "Happy path", label: "Full-bleed media",
+    id: "media-bleed", group: "Optional component", label: "Full-bleed media",
     description: "Media breaking the container, edge to edge of the stage.",
     content: [p(T.long), media("bleed", PHOTOS.bleed, "A full-bleed band breaks the reading container."), p(T.long)],
   },

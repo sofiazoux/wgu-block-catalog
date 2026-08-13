@@ -184,35 +184,50 @@ function renderDetail(id) {
   // Workbench: rail | stage | spec
   const workbench = h("div", "workbench");
 
-  // -- Rail (Content configuration + Inspector) --
+  // -- Rail --
+  // Ordered deliberately: the default state first, then the optional
+  // components, then the inspector overlays, and the edge cases last.
   const rail = h("div", "rail");
+  const presetsIn = (group) => PRESETS.filter((pr) => pr.group === group);
+
+  const presetButton = (pr) => {
+    const btn = h("button", "preset");
+    btn.type = "button";
+    btn.dataset.preset = pr.id;
+    btn.title = pr.label;
+    btn.setAttribute("aria-pressed", String(pr.id === state.presetId));
+    btn.appendChild(h("span", "preset__name", pr.label));
+    btn.addEventListener("click", () => { state.presetId = pr.id; refresh(); });
+    return btn;
+  };
+  const presetGroup = (name, list) => {
+    const gEl = h("div", "preset-group");
+    if (name) gEl.appendChild(h("div", "preset-group__name", name));
+    list.forEach((pr) => gEl.appendChild(presetButton(pr)));
+    return gEl;
+  };
+
+  // 1) Content configuration — default (no sub-label), then optional components
   const cfg = h("div", "rail__section");
   cfg.appendChild(h("p", "rail__label", "Content configuration"));
-  const groups = {};
-  PRESETS.forEach((pr) => { (groups[pr.group] = groups[pr.group] || []).push(pr); });
-  Object.keys(groups).forEach((g) => {
-    const gEl = h("div", "preset-group");
-    gEl.appendChild(h("div", "preset-group__name", g));
-    groups[g].forEach((pr) => {
-      const btn = h("button", "preset");
-      btn.type = "button";
-      btn.dataset.preset = pr.id;
-      btn.title = pr.label;
-      btn.setAttribute("aria-pressed", String(pr.id === state.presetId));
-      btn.appendChild(h("span", "preset__name", pr.label));
-      btn.addEventListener("click", () => { state.presetId = pr.id; refresh(); });
-      gEl.appendChild(btn);
-    });
-    cfg.appendChild(gEl);
-  });
+  cfg.appendChild(presetGroup(null, presetsIn("Default")));
+  cfg.appendChild(presetGroup("Optional component", presetsIn("Optional component")));
   rail.appendChild(cfg);
 
+  // 2) Inspector
   const insp = h("div", "rail__section");
   insp.appendChild(h("p", "rail__label", "Inspector"));
   insp.appendChild(toggle("Grid tracks + margin", () => state.grid, (v) => { state.grid = v; refresh(); }));
   insp.appendChild(toggle("Row boundaries", () => state.rows, (v) => { state.rows = v; refresh(); }));
   insp.appendChild(toggle("Measure guide", () => state.measure, (v) => { state.measure = v; refresh(); }));
   rail.appendChild(insp);
+
+  // 3) Edge cases — last
+  const edge = h("div", "rail__section");
+  edge.appendChild(h("p", "rail__label", "Edge cases"));
+  edge.appendChild(presetGroup(null, presetsIn("Edge cases")));
+  rail.appendChild(edge);
+
   workbench.appendChild(rail);
 
   // -- Stage --
