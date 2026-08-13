@@ -438,7 +438,8 @@
 }
 .wgu-block-interactive__option {
   appearance: none; -webkit-appearance: none;
-  display: flex; align-items: stretch;
+  display: block;                              /* indicator lives absolute inside */
+  position: relative;
   width: 100%;
   padding: 0;
   border: none;
@@ -448,14 +449,15 @@
   filter: drop-shadow(0 10px 17.5px rgba(177, 188, 201, 0.3));
   transition: filter 200ms ease;
 }
+/* The right indicator (10 → 69) sits on top of the content via absolute
+ * positioning, and the content reserves 69px on the right so its text area
+ * never changes width between states — no line-count jump on hover. */
 .wgu-block-interactive__option-content {
-  flex: 1 1 0;
-  min-width: 0;
   min-height: 102px;
   display: flex; align-items: center;
-  padding: 16px 24px;
+  padding: 16px 93px 16px 24px;                /* right = 69 indicator + 24 gap */
   background: var(--pgn-wgu-background-pure-white);
-  border-radius: 8px 0 0 8px;
+  border-radius: 8px;
   font-family: var(--pgn-wgu-family-lato);
   font-weight: 400;
   font-size: 16px;
@@ -465,16 +467,16 @@
 }
 .wgu-block-interactive__option-text { flex: 1; }
 .wgu-block-interactive__option-indicator {
-  flex: none;
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
   width: 10px;
-  align-self: stretch;
-  min-height: 102px;
   background: var(--itv-chip);
   border-radius: 0 8px 8px 0;
   display: flex; align-items: center; justify-content: center;
   color: #fff;
   overflow: hidden;
   transition: width 180ms ease;
+  z-index: 1;
 }
 .wgu-block-interactive__option-arrow {
   display: flex; align-items: center; justify-content: center;
