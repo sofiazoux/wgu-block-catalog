@@ -23,6 +23,20 @@
     return n;
   };
 
+  /* ---- Google Material Symbols (Outlined) — icons via <span class="…">name…</span>.
+   * The webfont is loaded in index.html with FILL=0 (outlined). Container CSS
+   * controls the font-size (and thus the icon size); color inherits. --------*/
+  const ico = (name) => `<span class="material-symbols-outlined" aria-hidden="true">${name}</span>`;
+  const SVG_ARROW_OUTWARD    = ico("arrow_outward");
+  const SVG_ARROW_FORWARD    = ico("arrow_forward");
+  const SVG_REPLAY           = ico("replay");
+  const SVG_CLOSE            = ico("close");
+  const SVG_KEYBOARD_RETURN  = ico("keyboard_return");
+  const SVG_CHECK_CIRCLE     = ico("check_circle");
+  const SVG_CANCEL           = ico("cancel");
+  const SVG_STAR             = ico("star");
+  const SVG_INFO             = ico("info");
+
   /* ---- offline cover image (self-contained SVG data URI) ------------------ */
   function cover(hueA, hueB, label) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
@@ -40,12 +54,12 @@
   /* ---- qualifier vocabulary (§1). Meaning always carries a text label
    *      (a11y §8: never icon/colour alone). ---------------------------------*/
   const QUAL = {
-    correct:   { label: "Correct", icon: "✓", tone: "correct" },
-    incorrect: { label: "Incorrect", icon: "✕", tone: "incorrect" },
-    best:      { label: "Best explanation", icon: "★", tone: "best" },
+    correct:   { label: "Correct",          icon: "✓", svg: SVG_CHECK_CIRCLE, tone: "correct" },
+    incorrect: { label: "Incorrect",        icon: "✕", svg: SVG_CANCEL,       tone: "incorrect" },
+    best:      { label: "Best explanation", icon: "★", svg: SVG_STAR,         tone: "best" },
   };
-  const qualOf = (q) => (typeof q === "string" ? (QUAL[q] || { label: q, icon: "●", tone: "custom" })
-                                               : { label: q.label, icon: q.icon || "●", tone: "custom" });
+  const qualOf = (q) => (typeof q === "string" ? (QUAL[q] || { label: q, icon: "●", svg: SVG_INFO, tone: "custom" })
+                                               : { label: q.label, icon: q.icon || "●", svg: q.svg || SVG_INFO, tone: "custom" });
 
   /* ========================================================================
    * ENGINE — createInteractive(config, opts) → { root, restart, focusLaunch }
@@ -138,7 +152,8 @@
         state.primary[i] = opt;             // primary = only selection (§R1)
         ex.add(opt);
         state.displayed[i] = opt;
-        toScreen("feedback", "Learner selects an option", "step-context", true);
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);   // shared element
+        toScreen("feedback", "Learner selects an option", "step-context", false);
         return;
       }
       // explore-all
@@ -146,7 +161,8 @@
       ex.add(opt);                          // permanent (§R2)
       state.displayed[i] = opt;
       if (state.screen === "context") {
-        toScreen("feedback", "Learner selects an option", "step-context", true);
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);   // shared element
+        toScreen("feedback", "Learner selects an option", "step-context", false);
       } else {
         // already in feedback → update pane in place, NO slide (§7, §R4)
         setEdge("step-feedback", "Learner selects another option (explore-all)", "step-feedback");
@@ -164,19 +180,33 @@
         state.step += 1;
         state.screen = "context";
         setEdge("step-feedback", "Continue (gate satisfied)", "step-context");
+        pulseIncoming = true;                   // colour flash on the entering content
         renderModalBody(!reduced());
         emit();
       }
     }
+    // Flag consumed by renderModalBody to apply the entering-content tint pulse
+    // only on step-advance transitions (not on select / return / restart / etc).
+    let pulseIncoming = false;
+    // Reference to the options element captured before a context↔feedback
+    // transition, so renderModalBody can FLIP it into its new position instead
+    // of sliding the whole screen.
+    let flipOptionsFrom = null;
     function goReturn() {
-      if (state.screen === "synthesis") {         // synthesis → last step (§10)
+      // From synthesis: back to the last step's feedback (§10, state preserved).
+      if (state.screen === "synthesis") {
         state.step = lastIndex;
         toScreen("feedback", "Return", "synthesis", true);
         return;
       }
-      if (state.step === 0) return;               // step 1 has no return target (§3)
-      state.step -= 1;                            // previous step's state preserved
-      toScreen("feedback", "Return", "step-context / step-feedback", true);
+      // From step-feedback: back to the same step's context so the learner can
+      // re-read the framing before choosing again (state preserved). The
+      // options element is FLIP'd from its feedback-left position back to the
+      // context-right position instead of sliding the whole screen.
+      if (state.screen === "feedback") {
+        flipOptionsFrom = bodyEl.querySelector(`.${IB}__options`);
+        toScreen("context", "Return", "step-feedback", false);
+      }
     }
     function restart() {                          // §3 synthesis → step 1, cleared
       state.step = 0; state.primary = {}; state.explored = {}; state.displayed = {};
@@ -185,6 +215,15 @@
       renderRoot();
       const dlg = viewport.querySelector(`.${IB}__modal`);
       if (dlg) (dlg.querySelector("h2") || dlg).focus();
+      emit();
+    }
+    function goReplay() {                        // stepper replay → step 1, state preserved
+      if (state.step === 0 && state.screen !== "synthesis") return;
+      const from = state.screen === "synthesis" ? "synthesis" : "step-" + (state.screen === "context" ? "context" : "feedback");
+      state.step = 0;
+      state.screen = "context";
+      setEdge(from, "Replay to step 1", "step-context");
+      renderModalBody(!reduced());
       emit();
     }
 
@@ -208,11 +247,13 @@
         viewport.appendChild(modal);
         renderModalBody(false);
       }
-      // background inert while the dialog is open (§8)
+      // background inert while the dialog is open (§8) + viewport flag so CSS
+      // can drop the navy padding and let the modal cover the full stage.
       const launch = viewport.querySelector(`.${IB}__launch`);
       const open = state.screen !== "launch";
       launch.toggleAttribute("inert", open);
       launch.setAttribute("aria-hidden", String(open));
+      viewport.classList.toggle("is-modal-open", open);
     }
 
     /* ---- launch (in page, not modal) (§4.1) ---- */
@@ -253,8 +294,8 @@
       return wrap;
     }
 
-    /* ---- modal shell: persistent top bar + a body we re-render (§4.2) ---- */
-    let bodyEl = null, stepIndEl = null, returnBtn = null;
+    /* ---- modal shell: persistent top bar (name + stepper + close) + body -- */
+    let bodyEl = null, dotsEl = null, replayBtn = null;
     function renderModal() {
       const modal = el("div", `${IB}__modal`);
       modal.setAttribute("role", "dialog");
@@ -262,23 +303,32 @@
       modal.setAttribute("aria-labelledby", `${IB}-dlg-title`);
       modal.tabIndex = -1;
 
-      const bar = el("div", `${IB}__bar`);           // NEVER animates (§4.2, §7)
-      bar.appendChild(el("span", `${IB}__bar-name`, config.name));
+      // Top bar: transparent, 3-column flex (name, navy stepper pill, close).
+      const bar = el("div", `${IB}__topbar`);        // NEVER animates (§4.2, §7)
 
-      const ind = el("div", `${IB}__stepind`);
-      returnBtn = el("button", `${IB}__return`, "‹ Return");
-      returnBtn.type = "button";
-      returnBtn.addEventListener("click", goReturn);
-      ind.appendChild(returnBtn);
-      stepIndEl = el("span", `${IB}__stepind-label`);
-      ind.appendChild(stepIndEl);
-      bar.appendChild(ind);
+      const nameEl = el("div", `${IB}__topbar-name`);
+      nameEl.appendChild(el("span", null, config.name));
+      bar.appendChild(nameEl);
 
-      const close = el("button", `${IB}__close`, "✕");
+      // Navy stepper pill hanging from the top edge (rounded bottom corners).
+      const stepper = el("div", `${IB}__stepper`);
+      replayBtn = el("button", `${IB}__replay`);
+      replayBtn.type = "button";
+      replayBtn.setAttribute("aria-label", "Replay from step 1");
+      replayBtn.innerHTML = SVG_REPLAY;
+      replayBtn.addEventListener("click", goReplay);
+      stepper.appendChild(replayBtn);
+      dotsEl = el("div", `${IB}__stepper-dots`);
+      stepper.appendChild(dotsEl);
+      bar.appendChild(stepper);
+
+      const close = el("button", `${IB}__topbar-close`);
       close.type = "button";
-      close.setAttribute("aria-label", "Close");
+      close.setAttribute("aria-label", "Close interactive");
+      close.innerHTML = SVG_CLOSE;
       close.addEventListener("click", () => closeModal("step-" + (state.screen === "context" ? "context" : "feedback")));
       bar.appendChild(close);
+
       modal.appendChild(bar);
 
       bodyEl = el("div", `${IB}__body`);
@@ -303,38 +353,121 @@
     }
 
     function updateBar() {
-      // Step indicator communicates position (§8). Return hidden on step 1 (§3).
-      stepIndEl.textContent = `Step ${state.step + 1} of ${steps.length}`;
-      const noReturn = state.step === 0 && state.screen !== "synthesis";
-      returnBtn.hidden = noReturn;
+      // Stepper dots: N per steps count (up to 5). Active dot = current step.
+      dotsEl.replaceChildren();
+      for (let idx = 0; idx < steps.length; idx++) {
+        if (idx > 0) dotsEl.appendChild(el("span", `${IB}__stepper-line`));
+        const dot = el("div", `${IB}__stepper-dot`);
+        if (idx === state.step && state.screen !== "synthesis") dot.classList.add("is-active");
+        dot.appendChild(el("span", `${IB}__stepper-num`, String(idx + 1)));
+        dotsEl.appendChild(dot);
+      }
+      // Replay is a no-op / hidden on step 1 since we're already there.
+      replayBtn.hidden = state.step === 0 && state.screen !== "synthesis";
     }
 
     function renderModalBody(slide) {
       if (!bodyEl) return;
       updateBar();
+
+      // Capture the FLIP source rect BEFORE the DOM changes (options are the
+      // shared element between context and feedback in the same step).
+      const flipFromRect = flipOptionsFrom ? flipOptionsFrom.getBoundingClientRect() : null;
+      flipOptionsFrom = null;
+
       let content;
       if (state.screen === "context") content = renderContext();
       else if (state.screen === "feedback") content = renderFeedback();
       else content = renderSynthesis();
-      bodyEl.replaceChildren(content);
-      if (slide) { content.classList.add(`${IB}__slide-in`); }
+
+      // Each render is wrapped in a full-size __screen so its background can
+      // extend behind the (absolute) topbar and be tinted independently. The
+      // topbar itself is drawn on top and never slides.
+      const screen = el("div", `${IB}__screen`);
+      screen.appendChild(content);
+
+      // Slide transition (§7): OUTGOING screen translates to the left and the
+      // INCOMING screen translates in from the right at the same rate — no
+      // opacity change, so it feels like one mechanical push. Any orphan
+      // screens from a rapid re-trigger are cleaned up first.
+      const existing = bodyEl.querySelectorAll(`.${IB}__screen`);
+      if (slide && !reduced() && existing.length > 0) {
+        for (let i = 0; i < existing.length - 1; i++) existing[i].remove();
+        const outgoing = existing[existing.length - 1];
+        const withPulse = pulseIncoming;
+        pulseIncoming = false;
+        bodyEl.appendChild(screen);
+        screen.classList.add(`${IB}__slide-entering`);
+        if (withPulse) screen.classList.add(`${IB}__bg-pulse`);
+        outgoing.classList.add(`${IB}__slide-leaving`);
+        const cleanup = () => {
+          if (outgoing.parentNode) outgoing.remove();
+          screen.classList.remove(`${IB}__slide-entering`, `${IB}__bg-pulse`);
+        };
+        screen.addEventListener("animationend", cleanup, { once: true });
+        setTimeout(cleanup, 1500);   // safety net if animationend never fires
+        return;
+      }
+
+      // Initial render or reduced-motion: no slide, just swap.
+      pulseIncoming = false;
+      bodyEl.replaceChildren(screen);
+
+      // FLIP: after the swap, if we captured a from-rect, invert the new
+      // options into the old position and animate to the identity so it reads
+      // as a smooth relocation. The surrounding content just changes.
+      if (flipFromRect && !reduced()) {
+        const newOptions = screen.querySelector(`.${IB}__options`);
+        if (newOptions) {
+          const to = newOptions.getBoundingClientRect();
+          const dx = flipFromRect.left - to.left;
+          const dy = flipFromRect.top - to.top;
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            newOptions.style.transition = "none";
+            newOptions.style.transform = `translate(${dx}px, ${dy}px)`;
+            void newOptions.offsetWidth;                           // force reflow
+            newOptions.style.transition = "transform 620ms cubic-bezier(0.4, 0, 0.2, 1)";
+            newOptions.style.transform = "";
+            const cleanup = () => {
+              newOptions.style.transition = "";
+              newOptions.style.transform = "";
+            };
+            newOptions.addEventListener("transitionend", cleanup, { once: true });
+            setTimeout(cleanup, 900);
+          }
+        }
+      }
     }
 
     /* ---- step-context (§4.2) ---- */
     function renderContext() {
       const i = state.step, step = steps[i];
       const c = el("div", `${IB}__content`);
-      const left = el("div", `${IB}__col ${IB}__col--text`);
-      left.appendChild(el("h2", `${IB}__ctx-title`, step.contextTitle));
-      left.querySelector("h2").id = `${IB}-dlg-title`;
-      left.appendChild(el("p", `${IB}__ctx-desc`, step.contextDescription));
-      left.appendChild(el("p", `${IB}__do-label`, "What you need to do")); // fixed label (§6)
-      left.appendChild(el("p", `${IB}__task`, step.task));
+      const left = el("div", `${IB}__col ${IB}__col--context`);
+
+      const ctx = el("div", `${IB}__ctx-frame`);
+      const title = el("h2", `${IB}__ctx-title`, step.contextTitle);
+      title.id = `${IB}-dlg-title`;
+      ctx.appendChild(title);
+      ctx.appendChild(el("p", `${IB}__ctx-desc`, step.contextDescription));
+      left.appendChild(ctx);
+
+      // "What you need to do" cue — chip icon + label (fixed §6) + task text.
+      const taskFrame = el("div", `${IB}__task-frame`);
+      const cue = el("div", `${IB}__task-cue`);
+      const cueIcon = el("span", `${IB}__task-icon`);
+      cueIcon.innerHTML = SVG_ARROW_OUTWARD;
+      cue.appendChild(cueIcon);
+      cue.appendChild(el("span", `${IB}__task-cue-text`, "What you need to do"));
+      taskFrame.appendChild(cue);
+      taskFrame.appendChild(el("p", `${IB}__task-desc`, step.task));
+      left.appendChild(taskFrame);
       c.appendChild(left);
 
-      const right = el("div", `${IB}__col ${IB}__col--options`);
+      const right = el("div", `${IB}__col ${IB}__col--step`);
       right.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
-      right.appendChild(renderOptions(i));   // nothing selected yet
+      right.appendChild(renderOptions(i));
+      right.appendChild(renderAction(i));    // shown disabled until an option is picked
       c.appendChild(right);
       return c;
     }
@@ -342,19 +475,33 @@
     /* ---- step-feedback (§4.3): options move to the left, feedback on right ---- */
     function renderFeedback() {
       const i = state.step, step = steps[i];
-      const c = el("div", `${IB}__content`);
-      const left = el("div", `${IB}__col ${IB}__col--options`);
-      left.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
-      left.appendChild(renderOptions(i));
-      left.appendChild(renderAction(i));
+      const c = el("div", `${IB}__content ${IB}__content--feedback`);
+
+      // Left: keyboard_return button + step body (restate + options + action).
+      const left = el("div", `${IB}__col ${IB}__col--step`);
+      const ret = el("button", `${IB}__return-btn`);
+      ret.type = "button";
+      ret.setAttribute("aria-label", "Return to the context for this step");
+      ret.innerHTML = SVG_KEYBOARD_RETURN;
+      ret.addEventListener("click", goReturn);
+      left.appendChild(ret);
+
+      const body = el("div", `${IB}__step-body`);
+      body.appendChild(el("p", `${IB}__restate`, step.taskRestatement));
+      body.appendChild(renderOptions(i));
+      body.appendChild(renderAction(i));
+      left.appendChild(body);
       c.appendChild(left);
 
+      // Right: qualifier row (icon + label) + response feedback text.
       const right = el("div", `${IB}__col ${IB}__col--feedback`);
       const opt = state.displayed[i];
       const o = step.options[opt];
       const q = qualOf(o.qualifier);
       const qEl = el("div", `${IB}__qual ${IB}__qual--${q.tone}`);
-      qEl.appendChild(el("span", `${IB}__qual-icon`, q.icon));
+      const qIcon = el("span", `${IB}__qual-icon`);
+      qIcon.innerHTML = q.svg;
+      qEl.appendChild(qIcon);
       qEl.appendChild(el("span", `${IB}__qual-label`, q.label));   // text label always (§8)
       right.appendChild(qEl);
       right.appendChild(el("p", `${IB}__feedback-text`, o.feedback));
@@ -377,11 +524,22 @@
         const lockedThis = locked && state.primary[i] !== idx;
         if (lockedThis) { b.setAttribute("aria-disabled", "true"); b.classList.add("is-locked"); }
 
-        b.appendChild(el("span", `${IB}__option-text`, o.label));
-        const badges = el("span", `${IB}__option-badges`);
-        if (explored) badges.appendChild(srBadge("explored", "✓"));
-        if (lockedThis) badges.appendChild(srBadge("unavailable", ""));  // announced (§8)
-        b.appendChild(badges);
+        // Content pane (white card with the option text on the left). The
+        // "explored" and "locked" states are announced to screen readers only
+        // — the teal border / faded look already communicates them visually.
+        const content = el("span", `${IB}__option-content`);
+        content.appendChild(el("span", `${IB}__option-text`, o.label));
+        if (explored) content.appendChild(srBadge("explored", ""));
+        if (lockedThis) content.appendChild(srBadge("unavailable", ""));  // announced (§8)
+        b.appendChild(content);
+
+        // Right indicator: default 10px teal strip → 69px teal box with arrow
+        // on hover / when currently displayed (§R5).
+        const ind = el("span", `${IB}__option-indicator`);
+        const arrow = el("span", `${IB}__option-arrow`);
+        arrow.innerHTML = SVG_ARROW_FORWARD;
+        ind.appendChild(arrow);
+        b.appendChild(ind);
 
         b.addEventListener("click", () => {
           if (b.getAttribute("aria-disabled") === "true") return;   // locked read-only
@@ -535,14 +693,15 @@
 
   const step = (over) => Object.assign({
     mode: "choose-one",
-    contextTitle: "A situation to read",
-    contextDescription: "A learner is deciding how to act. Weigh what the moment demands against what the person tends to do.",
-    task: "Choose the response that best reflects sound judgement in this situation.",
-    taskRestatement: "Select the response you think is best",
+    contextTitle: "A learner reads a situation whose cues pull against long-held habits of response",
+    contextDescription: "Someone is deciding how to act in a moment where the situation and their disposition do not fully agree. Weigh what this specific moment seems to demand against what the person tends to do by default. Consider what each response reveals about the reasoning behind it, and what the choice would signal to someone watching closely.",
+    task: "Choose the response you believe best reflects sound judgement in this situation. There is no single correct answer — the point is to make your reasoning explicit to yourself, and to notice when a habitual response would miss what the moment actually requires.",
+    taskRestatement: "Briefly restate the learner task for this step.",
     options: [
-      q("Act on the situation's cues", "best", "Strong choice — you read the moment before defaulting to habit."),
-      q("Rely on past experience", "incorrect", "Experience helps, but here the situation has changed in ways habit misses."),
-      q("Wait for more information", "correct", "Reasonable — though at some point judgement under uncertainty is the task."),
+      q("Read the situation carefully and act on the specific cues in front of you before defaulting to what usually works in similar cases", "best", "Strong choice — you read the moment before defaulting to habit, which is exactly the judgement this step is testing."),
+      q("Rely on the experience you have built up across many similar situations, trusting the pattern you have seen before", "incorrect", "Experience helps, but here the situation has shifted in ways that habitual responses tend to miss. That is the failure mode this step surfaces."),
+      q("Pause and gather more information before committing to any single course of action, even if that means acting later than others would", "correct", "Reasonable — though at some point judgement under uncertainty becomes the task, because waiting is not always available."),
+      q("Consult with someone who has more distance from the situation and can weigh the cues without the pressure you are feeling in the moment", "correct", "A sound instinct in many cases. The trade-off is time and the fact that outside perspective can miss what only presence in the moment reveals."),
     ],
   }, over);
   const exploreStep = (over) => step(Object.assign({
