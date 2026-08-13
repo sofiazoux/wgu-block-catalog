@@ -479,6 +479,63 @@ button { font-family: inherit; }
 .decision h4 { font-size: 13px; color: var(--c-ink); margin: 0 0 4px; }
 
 /* ============================================================================
+ * INTERACTIVE BLOCK — chrome-side pieces (spec panel state machine + the
+ * "Current state" stage overlay). The block's own visuals live in
+ * blocks/interactive.css.
+ * ==========================================================================*/
+/* Live state-machine readout + edge table in the spec panel */
+.itv-spec-readout {
+  font-size: 12.5px; color: var(--c-ink-2);
+  background: var(--c-raise); border: 1px solid var(--c-line);
+  border-radius: var(--c-radius-sm); padding: 8px 10px; margin: 0 0 12px;
+}
+.itv-spec-readout .mono { color: var(--c-ink); font-weight: 600; }
+.itv-edges { display: flex; flex-direction: column; gap: 4px; }
+.itv-edge {
+  display: grid; grid-template-columns: 1fr; gap: 2px;
+  border: 1px solid var(--c-line); border-left: 3px solid transparent;
+  border-radius: var(--c-radius-sm); padding: 7px 9px;
+  font-size: 12px; color: var(--c-ink-2);
+}
+.itv-edge__from { font-size: 10.5px; color: var(--c-muted); }
+.itv-edge__trig { color: var(--c-ink); }
+.itv-edge__to { font-size: 11px; color: var(--c-ink-2); }
+/* transitions available from the current screen light up */
+.itv-edge.is-available { border-left-color: var(--c-accent); background: var(--c-raise); }
+.itv-edge.is-available .itv-edge__from { color: var(--c-ink-2); }
+
+/* selection modes */
+.itv-mode {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 10px;
+  border: 1px solid var(--c-line); border-radius: var(--c-radius-sm);
+  padding: 8px 10px; margin-bottom: 6px; font-size: 12px; color: var(--c-ink-2);
+}
+.itv-mode__name { grid-column: 1 / -1; font-size: 11px; color: var(--c-ink); font-weight: 600; }
+.itv-note { font-size: 12px; color: var(--c-ink-2); margin: 8px 0 0; }
+
+/* author config two-up */
+.itv-cfg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.itv-cfg__h { font-size: 11px; font-weight: 600; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.itv-cfg__list { margin: 0; padding-left: 16px; font-size: 12px; color: var(--c-ink-2); }
+.itv-cfg__list li { margin-bottom: 4px; }
+
+/* "Current state" overlay on the interactive stage */
+.itv-stateview {
+  position: absolute; top: 12px; left: 12px; z-index: 6;
+  display: none; min-width: 180px;
+  background: rgba(25, 28, 32, 0.9); color: #eceef1;
+  border-radius: var(--c-radius-sm); padding: 8px 10px;
+  font-size: 11px; pointer-events: none;
+}
+.itv-stateview.is-on { display: block; }
+.itv-stateview__row { display: flex; justify-content: space-between; gap: 12px; padding: 1px 0; }
+.itv-stateview__k { color: #aeb4bd; }
+.itv-stateview__v { color: #fff; }
+
+/* On narrow chrome the author-config columns stack too. */
+@media (max-width: 1080px) { .itv-cfg { grid-template-columns: 1fr; } }
+
+/* ============================================================================
  * RESPONSIVE — the CHROME itself. On smaller screens the rail and spec panel
  * stack under the stage rather than starving it.
  * ==========================================================================*/

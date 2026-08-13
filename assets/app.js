@@ -30,10 +30,11 @@ const BLOCKS = [
   {
     id: "interactive",
     name: "Interactive Block",
-    status: "proposed",
-    statusLabel: "Proposed",
-    desc: "An interactive learning element. Deferred — scaffolded here so it can be filled in without rework.",
-    ready: false,
+    status: "in-review",
+    statusLabel: "In review",
+    desc: "A clickable multi-step activity: launch, decision steps with feedback, and a synthesis. Behaviour-driven state machine.",
+    ready: true,
+    kind: "interactive",
   },
 ];
 const blockById = (id) => BLOCKS.find((b) => b.id === id);
@@ -99,7 +100,7 @@ function catalogCard(b) {
   card.href = `#/block/${b.id}`;
 
   const prev = h("div", "card__preview");
-  prev.appendChild(b.ready ? miniFlexiblePreview() : miniDeferredPreview());
+  prev.appendChild(!b.ready ? miniDeferredPreview() : b.kind === "interactive" ? miniInteractivePreview() : miniFlexiblePreview());
   card.appendChild(prev);
 
   const body = h("div", "card__body");
@@ -138,6 +139,30 @@ function miniFlexiblePreview() {
     </div>`;
   return w;
 }
+
+/* Interactive: a mini modal with an option list + a highlighted (selected) row. */
+function miniInteractivePreview() {
+  const w = h("div");
+  w.innerHTML = `
+    <div style="border:1px solid #e2e5e8;border-radius:6px;overflow:hidden;">
+      <div style="height:16px;background:#223e5d;display:flex;align-items:center;padding:0 8px;">
+        <div style="height:4px;width:40%;background:rgba(255,255,255,0.7);border-radius:2px;"></div>
+      </div>
+      <div style="padding:10px;display:flex;gap:8px;">
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+          <div style="height:14px;border:1.5px solid #d6d9df;border-radius:4px;"></div>
+          <div style="height:14px;border:1.5px solid #0070f0;box-shadow:inset 0 0 0 1px #0070f0;border-radius:4px;"></div>
+          <div style="height:14px;border:1.5px solid #d6d9df;border-radius:4px;"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+          <div style="height:9px;width:52px;background:#0070f0;border-radius:999px;"></div>
+          <div style="height:4px;width:100%;background:#e2e5e8;border-radius:2px;"></div>
+          <div style="height:4px;width:86%;background:#e2e5e8;border-radius:2px;"></div>
+        </div>
+      </div>
+    </div>`;
+  return w;
+}
 function miniDeferredPreview() {
   const w = h("div");
   w.style.cssText = "height:100%;display:flex;align-items:center;justify-content:center;color:#aeb4ba;font-family:var(--c-mono);font-size:12px;border:1px dashed #d3d7db;border-radius:6px;";
@@ -153,6 +178,7 @@ function renderDetail(id) {
   app.replaceChildren();
   app.appendChild(topbar());
   if (!b.ready) return renderDeferredDetail(b);
+  if (b.kind === "interactive") return renderInteractiveDetail(b);
 
   // ---- state ----
   const state = {
@@ -415,6 +441,172 @@ function renderDeferredDetail(b) {
 
   detail.appendChild(workbench);
   app.appendChild(detail);
+}
+
+/* ============================================================================
+ * INTERACTIVE BLOCK DETAIL — reuses the chrome (rail, stage + resizer, spec
+ * panel). The stage hosts a WORKING interactive; the spec panel shows the live
+ * state machine. Behaviour + data come from window.ITV (interactive.js).
+ * ==========================================================================*/
+function renderInteractiveDetail(b) {
+  const ITV = window.ITV;
+  const state = { presetId: ITV.PRESETS[0].id, currentState: false, reducedMotion: false };
+
+  const detail = h("div", "detail");
+  const header = h("div", "detail__header");
+  header.appendChild(backLink());
+  const titleRow = h("div", "detail__title-row");
+  titleRow.appendChild(h("h1", "detail__title", b.name));
+  titleRow.appendChild(statusBadge(b.status, b.statusLabel));
+  header.appendChild(titleRow);
+  detail.appendChild(header);
+
+  const workbench = h("div", "workbench");
+
+  // -- Rail --
+  const rail = h("div", "rail");
+  const groupsInOrder = ["Default", "Optional configuration", "Edge cases"];
+  const inGroup = (g) => ITV.PRESETS.filter((p) => p.group === g);
+  const presetBtn = (pr) => {
+    const btn = h("button", "preset");
+    btn.type = "button"; btn.dataset.preset = pr.id; btn.title = pr.label;
+    btn.setAttribute("aria-pressed", String(pr.id === state.presetId));
+    btn.appendChild(h("span", "preset__name", pr.label));
+    btn.addEventListener("click", () => { state.presetId = pr.id; mount(); reflect(); });
+    return btn;
+  };
+  const groupEl = (name, list) => {
+    const g = h("div", "preset-group");
+    if (name) g.appendChild(h("div", "preset-group__name", name));
+    list.forEach((pr) => g.appendChild(presetBtn(pr)));
+    return g;
+  };
+
+  const cfg = h("div", "rail__section");
+  cfg.appendChild(h("p", "rail__label", "Content configuration"));
+  cfg.appendChild(groupEl(null, inGroup("Default")));
+  cfg.appendChild(groupEl("Optional configuration", inGroup("Optional configuration")));
+  rail.appendChild(cfg);
+
+  const insp = h("div", "rail__section");
+  insp.appendChild(h("p", "rail__label", "Inspector"));
+  insp.appendChild(toggle("Current state", () => state.currentState, (v) => { state.currentState = v; stateView.classList.toggle("is-on", v); }));
+  insp.appendChild(toggle("Reduced motion", () => state.reducedMotion, (v) => { state.reducedMotion = v; }));
+  rail.appendChild(insp);
+
+  const edge = h("div", "rail__section");
+  edge.appendChild(h("p", "rail__label", "Edge cases"));
+  edge.appendChild(groupEl(null, inGroup("Edge cases")));
+  rail.appendChild(edge);
+  workbench.appendChild(rail);
+
+  // -- Stage --
+  const stageWrap = h("div", "stage-wrap");
+  const toolbar = h("div", "stage-toolbar");
+  const widthReadout = h("span", "readout");
+  widthReadout.innerHTML = 'stage <b class="mono">—</b> px';
+  const widthValue = widthReadout.querySelector("b");
+  const caption = h("p", "stage-caption", "");
+  const stagePresets = h("div", "stage-presets");
+  [["Mobile", 360], ["Tablet", 760], ["Wide", 980]].forEach(([label, px]) => {
+    const bb = h("button", null, label); bb.type = "button";
+    bb.addEventListener("click", () => { stage.style.width = px + "px"; updateWidth(); });
+    stagePresets.appendChild(bb);
+  });
+  toolbar.appendChild(widthReadout);
+  toolbar.appendChild(h("span", "stage-toolbar__spacer"));
+  toolbar.appendChild(stagePresets);
+  stageWrap.appendChild(toolbar);
+  stageWrap.appendChild(caption);
+
+  const stageFrame = h("div", "stage-frame");
+  const stage = h("div", "stage");
+  const stageInner = h("div", "stage__inner");
+  const stateView = h("div", "itv-stateview");     // "Current state" overlay
+  stageInner.appendChild(stateView);
+  stage.appendChild(stageInner);
+  const handle = h("div", "stage__handle");
+  handle.setAttribute("role", "separator"); handle.setAttribute("aria-orientation", "vertical");
+  handle.title = "Drag to resize the stage";
+  stageFrame.appendChild(stage); stageFrame.appendChild(handle);
+  stageWrap.appendChild(stageFrame);
+  workbench.appendChild(stageWrap);
+
+  // drag-to-resize (same pattern as the flexible detail)
+  let dx = 0, dw = 0;
+  const onMove = (e) => { stage.style.width = Math.max(280, Math.min(2000, dw + (e.clientX - dx))) + "px"; updateWidth(); };
+  const onUp = (e) => { try { handle.releasePointerCapture(e.pointerId); } catch (_) {} window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); handle.classList.remove("is-dragging"); };
+  handle.addEventListener("pointerdown", (e) => { e.preventDefault(); dx = e.clientX; dw = stage.offsetWidth; try { handle.setPointerCapture(e.pointerId); } catch (_) {} handle.classList.add("is-dragging"); window.addEventListener("pointermove", onMove); window.addEventListener("pointerup", onUp); });
+
+  // -- Spec panel --
+  const spec = h("div", "spec");
+  const specBar = h("div", "spec__bar");
+  specBar.appendChild(h("h2", null, "Specification"));
+  const collapseBtn = h("button", "spec__collapse", "⟨");
+  collapseBtn.type = "button"; collapseBtn.title = "Collapse / expand the spec panel";
+  let specCollapsed = true;
+  collapseBtn.addEventListener("click", () => {
+    specCollapsed = !specCollapsed;
+    workbench.classList.toggle("is-spec-collapsed", specCollapsed);
+    spec.classList.toggle("is-spec-collapsed", specCollapsed);
+    collapseBtn.textContent = specCollapsed ? "⟨" : "⟩";
+  });
+  specBar.appendChild(collapseBtn);
+  spec.appendChild(specBar);
+  const specBody = h("div", "spec__body");
+  spec.appendChild(specBody);
+  workbench.appendChild(spec);
+  workbench.classList.add("is-spec-collapsed");
+  spec.classList.add("is-spec-collapsed");
+
+  detail.appendChild(workbench);
+  app.appendChild(detail);
+
+  const specUpdate = ITV.renderSpecPanel(specBody);
+
+  // ---- mount / update ----
+  function reflect() {
+    rail.querySelectorAll(".preset").forEach((el) => el.setAttribute("aria-pressed", String(el.dataset.preset === state.presetId)));
+  }
+  function updateWidth() {
+    const cs = getComputedStyle(stage);
+    widthValue.textContent = Math.round(stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+  }
+  function onState(snap) {
+    specUpdate(snap);
+    renderStateView(stateView, snap);
+  }
+  function mount() {
+    const pr = ITV.presetById(state.presetId);
+    caption.textContent = pr.description;
+    stageInner.querySelectorAll("." + "wgu-block-interactive").forEach((n) => n.remove());
+    const inst = ITV.create(pr.config, { reducedMotion: () => state.reducedMotion, onState });
+    stageInner.appendChild(inst.root);
+  }
+
+  const ro = new ResizeObserver(() => updateWidth());
+  ro.observe(stage);
+  mount();
+  reflect();
+  updateWidth();
+}
+
+/* The "Current state" inspector overlay for the interactive stage. */
+function renderStateView(view, snap) {
+  const screen = snap.screen === "context" ? "step-context" : snap.screen === "feedback" ? "step-feedback" : snap.screen;
+  const primaries = Object.keys(snap.primary).length
+    ? Object.entries(snap.primary).map(([s, o]) => `s${Number(s) + 1}→opt${o + 1}`).join("  ")
+    : "—";
+  let gate = "—";
+  if (snap.screen === "feedback") gate = snap.mode === "explore-all" ? `${snap.exploredCount}/${snap.options}` : (snap.gate ? "satisfied" : "waiting");
+  view.replaceChildren();
+  const row = (k, v) => { const r = h("div", "itv-stateview__row"); r.appendChild(h("span", "itv-stateview__k", k)); r.appendChild(h("span", "itv-stateview__v mono", v)); view.appendChild(r); };
+  row("screen", screen);
+  row("step", `${snap.step + 1} / ${snap.totalSteps}`);
+  row("mode", snap.mode || "—");
+  row("gate", gate);
+  row("primary", primaries);
+  row("variant", snap.variant);
 }
 
 /* ============================================================================
