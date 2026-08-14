@@ -58,25 +58,31 @@
    * Natural block width = (5+51+11)ch ≈ 622px; the container query enables the
    * float layout only once the stage is at least that wide, so the margin area
    * always has room for the bleed. */
-  --fc-measure: 51ch;        /* wide measure — ≈68 real chars (§6.1)           */
-  --fc-left-track: 5ch;      /* left track for heading outdents                */
-  --fc-margin-area: 11ch;    /* right margin asides bleed into (holds max 10ch)*/
+  /* Zones in px — measured directly off Figma so the layout matches without
+   * relying on ch calibration. Content zone total = 1008 (matches Figma). */
+  --fc-measure: 591px;       /* text column — Figma exact                       */
+  --fc-left-track: 208px;    /* left track = title outdent + symmetric margin  */
+  --fc-margin-area: 209px;   /* right margin asides bleed into (symmetric)     */
 
-  /* --- Float mechanics (§6.2). Named exactly as in the spec snippet. -------- */
-  --gutter: 2ch;             /* clear space between text and the floated aside */
-  --outdent: 1.5ch;          /* heading horizontal offset — deliberately small */
+  /* --- Float mechanics (§6.2). --------------------------------------------- */
+  --gutter: 24px;            /* clear space between text and the floated aside */
+  --outdent: 208px;          /* heading outdent — matches left-track (Figma)   */
 
   /* Full width of the centered column = the three zones summed. */
   --fc-container: calc(var(--fc-left-track) + var(--fc-measure) + var(--fc-margin-area));
 
-  max-width: var(--fc-container);
+  /* Default (single-column) width caps at the reading measure so nothing
+   * spreads out awkwardly in narrow stages. The desktop @container below
+   * bumps this up to the full three-zone container. */
+  max-width: var(--fc-measure);
   margin-inline: auto;               /* centre the specimen; air on both sides */
   color: var(--pgn-wgu-color-text-main-body);
   font-family: var(--pgn-wgu-family-lato);
-  /* Body at 16px — the production base (_shared.css sets .wgu-block to
-   * body-16). Comfortable measure without an oversized px footprint. */
-  font-size: var(--pgn-wgu-size-body-16);
-  line-height: var(--pgn-wgu-line-height-body-16);
+  /* Body 20/32 per Figma. Because the zone widths above are in ch (of THIS
+   * font), the layout math scales with the size — 1ch now resolves to Lato
+   * 20's "0" glyph everywhere. */
+  font-size: 20px;
+  line-height: 32px;
 }
 
 /* ----------------------------------------------------------------------------
@@ -94,7 +100,7 @@
  * boundary reads exactly like a paragraph break. */
 .wgu-block-flexible-content__row + .wgu-block-flexible-content__row,
 .wgu-block-flexible-content__text > * + * {
-  margin-top: var(--pgn-wgu-spacing-24);
+  margin-top: var(--pgn-wgu-spacing-32);        /* matches Figma paragraph gap */
 }
 
 /* ----------------------------------------------------------------------------
@@ -107,16 +113,16 @@
   color: var(--pgn-wgu-color-text-main-navy);
 }
 .wgu-block-flexible-content h2 {
-  font-size: var(--pgn-wgu-size-h3);
-  line-height: var(--pgn-wgu-line-height-h3);
+  font-size: 40px;                             /* Sora Bold H1 per Figma      */
+  line-height: 58px;
 }
 .wgu-block-flexible-content h3 {
   font-size: var(--pgn-wgu-size-h5);
   line-height: var(--pgn-wgu-line-height-h5);
 }
 .wgu-block-flexible-content p {
-  font-size: var(--pgn-wgu-size-body-16);
-  line-height: var(--pgn-wgu-line-height-body-16);
+  font-size: 20px;                             /* Body 20 Regular per Figma   */
+  line-height: 32px;
   /* Hyphenation is left OFF: the narrow-measure floor is what keeps the rag
    * even; we do not lean on hyphenation to rescue a too-narrow measure. */
 }
@@ -148,7 +154,7 @@
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
-  border-radius: var(--pgn-wgu-radius-lg);
+  border-radius: var(--pgn-wgu-radius-xl);       /* Figma xl (16) */
 }
 .wgu-block-flexible-content__figcaption {
   margin-top: var(--pgn-wgu-spacing-8);
@@ -156,23 +162,30 @@
   color: var(--pgn-wgu-color-text-secondary);
 }
 
-/* Callout is the non-image side element. Same float slot, no aspect ratio. */
+/* Callout is the non-image side element. Same float slot, no aspect ratio.
+ * Figma: coral fill, white Sora Bold 28/38, generous 42px padding, and an
+ * asymmetric radius (32 on tl / tr / bl, 0 on br) — the sharp corner "anchors"
+ * the callout to the text it accompanies. */
 .wgu-block-flexible-content__aside--callout {
-  background: var(--pgn-wgu-background-light-gray);
-  border-left: 3px solid var(--pgn-wgu-color-icon-lake);
-  border-radius: var(--pgn-wgu-radius-lg);
-  padding: var(--pgn-wgu-spacing-20);
+  background: var(--pgn-wgu-background-accent-coral);
+  border-radius: 32px 32px 0 32px;
+  padding: 42px;
+  color: var(--pgn-wgu-color-text-pure-white);
 }
 .wgu-block-flexible-content__aside--callout .wgu-block-flexible-content__callout-title {
   font-family: var(--pgn-wgu-family-sora);
   font-weight: var(--pgn-wgu-weight-bold);
-  font-size: var(--pgn-wgu-size-body-16);
-  color: var(--pgn-wgu-color-text-main-navy);
-  margin-bottom: var(--pgn-wgu-spacing-8);
+  font-size: 28px;
+  line-height: 38px;
+  color: var(--pgn-wgu-color-text-pure-white);
+  margin-bottom: 0;
 }
 .wgu-block-flexible-content__aside--callout p {
-  font-size: var(--pgn-wgu-size-body-16);
-  line-height: var(--pgn-wgu-line-height-body-16);
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: var(--pgn-wgu-weight-bold);
+  font-size: 28px;
+  line-height: 38px;
+  color: var(--pgn-wgu-color-text-pure-white);
 }
 
 /* ----------------------------------------------------------------------------
@@ -206,24 +219,31 @@
  * block is a plain single column, which is the whole point of §6.7: reading
  * order is the DOM order, no reshuffling.
  *
- * Threshold 40rem (640px): the block's natural width is (5+51+11)ch ≈ 622px at
- * Lato 16px, so below this the float layout would not fit without the asides
- * spilling out of the margin area. Keeping the threshold at the true footprint
- * means the collapse is clean — the layout never overflows in the transition.
+ * Threshold 63rem (1008px): the block's natural width is now 208+591+209 =
+ * 1008px (measured off Figma). Keeping the container-query threshold at the
+ * true footprint means the collapse is clean — the layout never overflows in
+ * the transition, so nothing gets cropped when the stage shrinks; elements
+ * reflow into a single column instead.
  * ==========================================================================*/
-@container stage (min-width: 40rem) {
+@container stage (min-width: 63rem) {
+
+  /* Restore the full three-zone width once there's room for the wrap layout. */
+  .wgu-block-flexible-content {
+    max-width: var(--fc-container);
+  }
 
   /* Text/aside rows sit after the left track and are capped at the measure. */
   .wgu-block-flexible-content__row {
     margin-left: var(--fc-left-track);
   }
 
-  /* HEADING OUTDENT (§6.4): headings — and only headings — reach left into the
-   * track with a negative margin. The offset is small on purpose: too much
-   * separation makes the heading read as detached from its text.
-   * OPEN ITEM (§6.4): assumed section headings (h2) only until told otherwise. */
+  /* HEADING OUTDENT (§6.4): the section title reaches left into the track
+   * with a negative margin and spans across both zones (left-track + measure)
+   * so it can wrap the way Figma does — starting at the block's left edge,
+   * extending the width of the reading column. */
   .wgu-block-flexible-content__row h2 {
     margin-left: calc(-1 * var(--outdent));
+    max-width: calc(var(--fc-left-track) + var(--fc-measure));
   }
 
   /* THE FLOAT WRAP (§6.2). This snippet is the spec's, verbatim in intent:
@@ -241,21 +261,18 @@
     margin-right: calc(-1 * (var(--aside-width) - var(--aside-overlap)));
   }
 
-  /* CLOSED SET OF IMAGE SIZES (decision log §10): image width is NOT free-form,
-   * because it determines the narrow measure. Three sizes, each chosen so
-   *   narrow = measure(51ch) − gutter(2ch) − overlap ≥ 35ch, i.e. overlap ≤ 14ch.
+  /* CLOSED SET OF IMAGE SIZES: dimensions measured off Figma (US-08 example).
+   *   medium is the Figma reference: 384px wide, overlapping the text by
+   *   175px so it bleeds fully into the 209px right margin area.
    *
    *   size    aside-width   overlap   narrow measure        bleed into margin
-   *   small       16ch        10ch     39ch ≈ 52 real chars      6ch
-   *   medium      20ch        12ch     37ch ≈ 50 real chars      8ch
-   *   large       24ch        14ch     35ch ≈ 47 real chars     10ch  (FLOOR)
-   *
-   * The large size deliberately sits the narrow measure exactly on the floor —
-   * that is the "narrow measure at its floor" edge case (§8).
-   * The margin-area (11ch) is sized to hold the largest bleed (10ch). */
-  .wgu-block-flexible-content__aside--size-small  { --aside-width: 16ch; --aside-overlap: 10ch; }
-  .wgu-block-flexible-content__aside--size-medium { --aside-width: 20ch; --aside-overlap: 12ch; }
-  .wgu-block-flexible-content__aside--size-large  { --aside-width: 24ch; --aside-overlap: 14ch; }
+   *   small       320px        130px    461px ≈ 62 real chars     190px
+   *   medium      384px        175px    416px ≈ 55 real chars     209px  (Figma)
+   *   large       420px        200px    391px ≈ 52 real chars     220px  (cap)
+   */
+  .wgu-block-flexible-content__aside--size-small  { --aside-width: 320px; --aside-overlap: 130px; }
+  .wgu-block-flexible-content__aside--size-medium { --aside-width: 384px; --aside-overlap: 175px; }
+  .wgu-block-flexible-content__aside--size-large  { --aside-width: 420px; --aside-overlap: 200px; }
 
   /* MEDIA WIDTHS (§6.5) — each media row reaches a different set of zones.
    * media-wide: text column + margin area (not the left track). */
