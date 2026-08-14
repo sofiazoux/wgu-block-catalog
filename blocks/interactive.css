@@ -83,6 +83,45 @@
   min-width: 320px;
 }
 
+/* Unstick the catalog's global topbar (WGU · OpenCraft) while the interactive
+ * demo is on-screen so it scrolls with the rest of the chrome instead of
+ * pinning to the top. The demo is meant to feel like a clean showcase of the
+ * block, not the surrounding tool. */
+body:has(.detail--interactive-demo) .topbar {
+  position: static;
+}
+
+/* ---- Preview button in the stage toolbar (opens a full-window preview in a
+ * new tab) ---------------------------------------------------------------- */
+.stage-presets__preview {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+}
+.stage-presets__preview .material-symbols-outlined {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ---- Full-width preview mode: no catalog chrome. Block fills the browser
+ * width; if it's taller than the viewport, the body scrolls normally. ----- */
+body.is-interactive-preview {
+  margin: 0;
+  background: var(--pgn-wgu-background-light-gray);
+}
+body.is-interactive-preview .topbar { display: none; }
+#app.preview-mode { min-height: 100vh; padding: 0; }
+.preview-stage {
+  container-type: inline-size;
+  container-name: stage;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.preview-stage > .wgu-block { width: 100%; }
+
 /* ----------------------------------------------------------------------------
  * LAUNCH (in page, not modal) — §4.1
  * Rounded card on navy canvas: mint-tinted left panel (chip + intent + CTA)
@@ -218,17 +257,18 @@
   background: var(--pgn-wgu-background-light-gray);   /* fallback under screens */
 }
 
-/* ---- Top bar: absolute overlay on top of the sliding screens. Mint bg so
- * scrolling content underneath doesn't peek through, and the stepper pill
- * always reads against a clean surface. ------------------------------------*/
+/* ---- Top bar: first flow child of each __screen so it scrolls away with the
+ * content instead of pinning. Transparent bg — the screen's mint (or the
+ * step-advance pulse tint) shows through. z-index keeps it drawn above the
+ * synth cover image which extends up to the top of the screen. ------------ */
 .wgu-block-interactive__topbar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 64px;
+  flex: none;
+  position: relative;
   z-index: 3;
+  height: 64px;
   display: flex;
   align-items: flex-start;
-  background: var(--pgn-wgu-background-light-gray);
+  background: transparent;
 }
 .wgu-block-interactive__topbar-name {
   flex: 1 1 0;
@@ -319,15 +359,20 @@
   position: absolute;
   inset: 0;                                 /* fills body top-to-bottom        */
   background-color: var(--pgn-wgu-background-light-gray);
-  padding-top: 112px;                       /* Figma: topbar 64 + gap 48       */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  gap: 48px;                                /* Figma: 48px gap after the topbar */
 }
 .wgu-block-interactive__screen > .wgu-block-interactive__content { flex: 1; }
-/* Synthesis lets the right (cover-image) column extend up behind the topbar. */
+/* Synthesis: only the left col scrolls internally so the right col (cover +
+ * takeaway + buttons) stays put while the narrative/highlights/compare grow. */
 .wgu-block-interactive__screen--synth {
-  padding-top: 0;
+  overflow: hidden;
+}
+.wgu-block-interactive__screen--synth > .wgu-block-interactive__content {
+  height: 100%;
+  min-height: 0;
 }
 
 /* ---- Two-column content shell (§4.2/§4.3) ------------------------------- */
@@ -541,8 +586,7 @@
 
 /* ---- Action button — outlined pill, disabled by default (§8) ------------ */
 .wgu-block-interactive__action {
-  margin-top: auto;                              /* push to bottom of the right col */
-  display: flex; justify-content: flex-end;
+  display: flex; justify-content: flex-end;      /* follows options with __step-body gap */
 }
 .wgu-block-interactive__action-btn {
   appearance: none; -webkit-appearance: none;
@@ -638,10 +682,12 @@
   grid-template-columns: 760fr 520fr;
 }
 
-/* ---- Left column: narrative -------------------------------------------- */
+/* ---- Left column: narrative + highlights + compare, scrollable ---------- */
 .wgu-block-interactive__col--synth-left {
-  padding: 112px var(--pgn-wgu-spacing-32) 0 var(--pgn-wgu-spacing-32);   /* 112 = topbar 64 + gap 48 (Figma) */
+  padding: 0 var(--pgn-wgu-spacing-32) var(--pgn-wgu-spacing-32) var(--pgn-wgu-spacing-32);
   gap: var(--pgn-wgu-spacing-32);
+  overflow-y: auto;
+  min-height: 0;                            /* allow shrink so overflow works  */
 }
 .wgu-block-interactive__synth-section {
   display: flex; flex-direction: column;
@@ -675,11 +721,13 @@
 }
 .wgu-block-interactive__synth-list li { margin: 0; }
 
-/* ---- Right column: cover + gradient + takeaway + actions --------------- */
+/* ---- Right column: cover + gradient + takeaway + actions. The cover image
+ * and overlay extend UP by 112px (topbar 64 + gap 48) so the illustration
+ * fills the full screen height, including the area behind the close icon. */
 .wgu-block-interactive__col--synth-right {
   position: relative;
   padding: 48px;
-  overflow: hidden;
+  overflow: visible;                        /* let cover img escape upward    */
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -687,14 +735,18 @@
 }
 .wgu-block-interactive__synth-cover-img {
   position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
+  top: -112px;
+  left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: calc(100% + 112px);
   object-fit: cover;
   z-index: 0;
 }
 .wgu-block-interactive__synth-cover-overlay {
   position: absolute;
-  inset: 0;
+  top: -112px;
+  left: 0; right: 0; bottom: 0;
+  height: calc(100% + 112px);
   background: linear-gradient(
     to bottom,
     rgba(255, 255, 255, 0) 60.5%,
@@ -785,6 +837,80 @@
 }
 .wgu-block-interactive__synth-btn-icon .material-symbols-outlined { font-size: 24px; }
 
+/* ---- Confirm dialogs (Leave / Restart) — centered card on a dim backdrop.
+ * Card: 500 max, radius xxl, padding 32, elevated. Actions: Ghost (outlined
+ * coral) and Primary (filled coral). Ghost is the destructive action, Primary
+ * is the safe / stay action (matches Figma). ----------------------------- */
+.wgu-block-interactive__confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pgn-wgu-spacing-24);
+}
+.wgu-block-interactive__confirm {
+  background: var(--pgn-wgu-background-pure-white);
+  border-radius: var(--pgn-wgu-radius-xxl);
+  padding: var(--pgn-wgu-spacing-32);
+  width: 100%;
+  max-width: 500px;
+  filter: drop-shadow(0 10px 17.5px rgba(177, 188, 201, 0.3));
+}
+.wgu-block-interactive__confirm:focus { outline: none; }
+.wgu-block-interactive__confirm-inner {
+  display: flex; flex-direction: column;
+  gap: var(--pgn-wgu-spacing-24);
+}
+.wgu-block-interactive__confirm-text {
+  display: flex; flex-direction: column;
+  gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__confirm-title {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--itv-chip);
+  margin: 0;
+}
+.wgu-block-interactive__confirm-desc {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-main-body);
+  margin: 0;
+}
+.wgu-block-interactive__confirm-actions {
+  display: flex;
+  gap: var(--pgn-wgu-spacing-16);
+}
+.wgu-block-interactive__confirm-btn {
+  appearance: none; -webkit-appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 12px 32px;
+  border-radius: 999px;
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 24px;
+  cursor: pointer;
+  border: 2px solid var(--pgn-wgu-background-accent-coral);
+}
+.wgu-block-interactive__confirm-btn:hover { filter: brightness(0.94); }
+.wgu-block-interactive__confirm-btn--ghost {
+  background: transparent;
+  color: var(--pgn-wgu-background-accent-coral);
+}
+.wgu-block-interactive__confirm-btn--primary {
+  background: var(--pgn-wgu-background-accent-coral);
+  color: var(--pgn-wgu-color-text-pure-white);
+}
+
 /* Stepper "Completed!" label — shown to the right of the dots on synthesis. */
 .wgu-block-interactive__stepper-completed {
   font-family: var(--pgn-wgu-family-lato);
@@ -796,19 +922,96 @@
   white-space: nowrap;
 }
 
-/* ---- Compare & Record variants (kept for now; will be styled next) ----- */
-.wgu-block-interactive__compare { display: flex; flex-direction: column; gap: var(--pgn-wgu-spacing-12); }
-.wgu-block-interactive__compare-row {
-  display: grid; grid-template-columns: 1fr 1.2fr; gap: var(--pgn-wgu-spacing-16);
-  border: 1px solid var(--pgn-wgu-color-border-gray); border-radius: var(--pgn-wgu-radius-lg);
-  padding: var(--pgn-wgu-spacing-16);
+/* ---- Highlights section: row of author-configured cards (icon + title +
+ * paragraph). Each card is white on a form-gray 1px border, blue icon. -----*/
+.wgu-block-interactive__synth-highlights {
+  display: flex;
+  gap: var(--pgn-wgu-spacing-16);
+  flex-wrap: wrap;
 }
-.wgu-block-interactive__compare-primary { font-weight: var(--pgn-wgu-weight-bold); color: var(--pgn-wgu-color-text-main-navy); }
-.wgu-block-interactive__compare-fb p { margin: 0; font-size: var(--pgn-wgu-size-body-14); }
+.wgu-block-interactive__synth-highlight {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 17px;
+  background: var(--pgn-wgu-background-pure-white);
+  border: 1px solid #d6d9df;
+  border-radius: var(--pgn-wgu-radius-lg);
+  display: flex; flex-direction: column;
+  gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__synth-highlight-head {
+  display: flex; align-items: center;
+  gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__synth-highlight-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; flex: none;
+  color: #0050AA;
+}
+.wgu-block-interactive__synth-highlight-icon .material-symbols-outlined { font-size: 24px; }
+.wgu-block-interactive__synth-highlight-title {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+  color: #0050AA;
+}
+.wgu-block-interactive__synth-highlight-para {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-main-body);
+  margin: 0;
+}
 
-.wgu-block-interactive__record { margin: 0; padding-left: var(--pgn-wgu-spacing-24); display: flex; flex-direction: column; gap: var(--pgn-wgu-spacing-16); }
-.wgu-block-interactive__record-resp { font-weight: var(--pgn-wgu-weight-bold); color: var(--pgn-wgu-color-text-main-navy); }
-.wgu-block-interactive__record-fb { margin: var(--pgn-wgu-spacing-4) 0 0; font-size: var(--pgn-wgu-size-body-14); }
+/* ---- Compare section: one row per step (Selected Response | qualifier +
+ * feedback), divided by a form-gray horizontal line under each row. --------*/
+.wgu-block-interactive__synth-compare {
+  display: flex; flex-direction: column;
+}
+.wgu-block-interactive__synth-compare-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pgn-wgu-spacing-16);
+  padding: var(--pgn-wgu-spacing-16) 0;
+  border-bottom: 1px solid #d6d9df;
+  align-items: start;
+}
+.wgu-block-interactive__synth-compare-primary {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-main-body);
+}
+.wgu-block-interactive__synth-compare-right {
+  display: flex; flex-direction: column;
+  gap: var(--pgn-wgu-spacing-4);
+}
+.wgu-block-interactive__synth-compare-qual {
+  display: flex; align-items: center;
+  gap: var(--pgn-wgu-spacing-8);
+}
+.wgu-block-interactive__synth-compare-qual-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; flex: none;
+}
+.wgu-block-interactive__synth-compare-qual-icon .material-symbols-outlined { font-size: 24px; }
+.wgu-block-interactive__synth-compare-qual-label {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 28px;
+}
+.wgu-block-interactive__synth-compare-fb {
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--pgn-wgu-color-text-main-body);
+  margin: 0;
+}
 
 /* ----------------------------------------------------------------------------
  * TRANSITIONS (§7) — a single slide-in on screen change; option selection

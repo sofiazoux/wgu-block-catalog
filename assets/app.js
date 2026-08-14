@@ -46,7 +46,14 @@ const h = (tag, cls, text) => { const n = document.createElement(tag); if (cls) 
  * ROUTER
  * ==========================================================================*/
 function route() {
+  // Clean preview-mode flags between navigations.
+  document.body.classList.remove("is-interactive-preview");
+  app.classList.remove("preview-mode");
+
   const hash = location.hash.replace(/^#/, "") || "/";
+  // Full-width preview of the interactive block: no chrome, just the block.
+  const preview = hash.match(/^\/preview\/interactive\/([\w-]+)/);
+  if (preview) { renderInteractivePreview(preview[1]); return; }
   const m = hash.match(/^\/block\/([\w-]+)/);
   if (m && blockById(m[1])) renderDetail(m[1]);
   else renderCatalog();
@@ -526,6 +533,16 @@ function renderInteractiveDetail(b) {
     bb.addEventListener("click", () => { stage.style.width = px + "px"; updateWidth(); });
     stagePresets.appendChild(bb);
   });
+  // Preview: open the current preset full-window in a new tab, no catalog
+  // chrome — approximates what the block looks like in real use.
+  const previewBtn = h("button", "stage-presets__preview");
+  previewBtn.type = "button";
+  previewBtn.title = "Open a full-width preview of this preset in a new tab";
+  previewBtn.innerHTML = 'Preview <span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span>';
+  previewBtn.addEventListener("click", () => {
+    window.open("#/preview/interactive/" + state.presetId, "_blank");
+  });
+  stagePresets.appendChild(previewBtn);
   toolbar.appendChild(widthReadout);
   toolbar.appendChild(h("span", "stage-toolbar__spacer"));
   toolbar.appendChild(stagePresets);
@@ -604,6 +621,42 @@ function renderInteractiveDetail(b) {
   mount();
   reflect();
   updateWidth();
+
+  // In demo mode, expand the stage to the maximum available width in the
+  // workbench on load — the "Wide" preset (980px) is a floor cap for wider
+  // browsers, but on smaller screens we still fill what's available. Runs
+  // after layout is settled so measurements are correct.
+  if (DEMO_MODE) {
+    requestAnimationFrame(() => {
+      const frame = stage.parentElement;                 // .stage-frame
+      if (!frame) return;
+      const hStyle = getComputedStyle(handle);
+      const handleBox = handle.offsetWidth
+        + parseFloat(hStyle.marginLeft) + parseFloat(hStyle.marginRight);
+      const target = Math.max(dragMin, frame.clientWidth - handleBox - 2);
+      stage.style.width = target + "px";
+      updateWidth();
+    });
+  }
+}
+
+/* ============================================================================
+ * INTERACTIVE PREVIEW — the block on its own, no catalog chrome. Used from the
+ * "Preview ↗" button so we can share what the block feels like at full-width.
+ * ==========================================================================*/
+function renderInteractivePreview(presetId) {
+  const ITV = window.ITV;
+  const preset = ITV.presetById(presetId);
+  if (!preset) { renderCatalog(); return; }
+
+  document.body.classList.add("is-interactive-preview");
+  app.replaceChildren();
+  app.classList.add("preview-mode");
+
+  const stage = h("div", "preview-stage");
+  const inst = ITV.create(preset.config, { reducedMotion: () => false });
+  stage.appendChild(inst.root);
+  app.appendChild(stage);
 }
 
 /* The "Current state" inspector overlay for the interactive stage. */
