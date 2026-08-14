@@ -110,7 +110,6 @@
         options: steps[state.step] ? steps[state.step].options.length : 0,
         primary: { ...state.primary },
         lastEdge: state.lastEdge,
-        variant: config.synthesisVariant,
       });
     }
 
@@ -122,6 +121,10 @@
       state.screen = "context";
       setEdge("launch", "Launch", "step-context");
       renderRoot();
+      // Scroll the page back to the top so the modal is fully in view even
+      // if the learner had scrolled the launch screen down.
+      try { window.scrollTo({ top: 0, behavior: "smooth" }); }
+      catch (_) { window.scrollTo(0, 0); }
       // focus moves into the dialog (§8)
       const dlg = viewport.querySelector(`.${IB}__modal`);
       if (dlg) (dlg.querySelector("h2, [tabindex], button") || dlg).focus();
@@ -271,11 +274,7 @@
       // chip: arrow-up-right icon, divider, interactive name
       const chip = el("div", `${IB}__chip`);
       const chipIcon = el("span", `${IB}__chip-icon`);
-      chipIcon.setAttribute("aria-hidden", "true");
-      chipIcon.innerHTML =
-        '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-        '<path d="M7 17L17 7M17 7H9M17 7V15" stroke="currentColor" stroke-width="2" ' +
-        'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      chipIcon.innerHTML = SVG_ARROW_OUTWARD;
       chip.appendChild(chipIcon);
       chip.appendChild(el("span", `${IB}__chip-divider`));
       chip.appendChild(el("span", `${IB}__chip-name`, config.name));
@@ -301,42 +300,16 @@
       return wrap;
     }
 
-    /* ---- modal shell: persistent top bar (name + stepper + close) + body -- */
-    let bodyEl = null, dotsEl = null, replayBtn = null;
+    /* ---- modal shell: body only. The top bar is a per-screen flow child so
+     * it scrolls away with the content instead of behaving like a sticky
+     * header. ---------------------------------------------------------------*/
+    let bodyEl = null;
     function renderModal() {
       const modal = el("div", `${IB}__modal`);
       modal.setAttribute("role", "dialog");
       modal.setAttribute("aria-modal", "true");
       modal.setAttribute("aria-labelledby", `${IB}-dlg-title`);
       modal.tabIndex = -1;
-
-      // Top bar: transparent, 3-column flex (name, navy stepper pill, close).
-      const bar = el("div", `${IB}__topbar`);        // NEVER animates (§4.2, §7)
-
-      const nameEl = el("div", `${IB}__topbar-name`);
-      nameEl.appendChild(el("span", null, config.name));
-      bar.appendChild(nameEl);
-
-      // Navy stepper pill hanging from the top edge (rounded bottom corners).
-      const stepper = el("div", `${IB}__stepper`);
-      replayBtn = el("button", `${IB}__replay`);
-      replayBtn.type = "button";
-      replayBtn.setAttribute("aria-label", "Replay from step 1");
-      replayBtn.innerHTML = SVG_REPLAY;
-      replayBtn.addEventListener("click", goReplay);
-      stepper.appendChild(replayBtn);
-      dotsEl = el("div", `${IB}__stepper-dots`);
-      stepper.appendChild(dotsEl);
-      bar.appendChild(stepper);
-
-      const close = el("button", `${IB}__topbar-close`);
-      close.type = "button";
-      close.setAttribute("aria-label", "Close interactive");
-      close.innerHTML = SVG_CLOSE;
-      close.addEventListener("click", () => closeModal("step-" + (state.screen === "context" ? "context" : "feedback")));
-      bar.appendChild(close);
-
-      modal.appendChild(bar);
 
       bodyEl = el("div", `${IB}__body`);
       modal.appendChild(bodyEl);
@@ -359,28 +332,124 @@
       return modal;
     }
 
-    function updateBar() {
-      // Stepper dots: N per steps count (up to 5). On step-context/feedback,
-      // only the current step is active. On synthesis, all N dots are filled
-      // and a "Completed!" label is appended after the dots.
-      dotsEl.replaceChildren();
+    /* Build a fresh topbar for the current state — name on the left, navy
+     * stepper pill in the centre, close on the right. Rebuilt per screen
+     * render so dots + "Completed!" reflect the state at render time. */
+    function buildTopbar() {
+      const bar = el("div", `${IB}__topbar`);
+
+      const nameEl = el("div", `${IB}__topbar-name`);
+      nameEl.appendChild(el("span", null, config.name));
+      bar.appendChild(nameEl);
+
+      const stepper = el("div", `${IB}__stepper`);
+      const replay = el("button", `${IB}__replay`);
+      replay.type = "button";
+      replay.setAttribute("aria-label", "Restart from step 1");
+      replay.innerHTML = SVG_REPLAY;
+      replay.addEventListener("click", openConfirmRestart);
       const isSynth = state.screen === "synthesis";
+      if (state.step === 0 && !isSynth) replay.hidden = true;
+      stepper.appendChild(replay);
+
+      const dots = el("div", `${IB}__stepper-dots`);
       for (let idx = 0; idx < steps.length; idx++) {
-        if (idx > 0) dotsEl.appendChild(el("span", `${IB}__stepper-line`));
+        if (idx > 0) dots.appendChild(el("span", `${IB}__stepper-line`));
         const dot = el("div", `${IB}__stepper-dot`);
         if (isSynth || idx === state.step) dot.classList.add("is-active");
         dot.appendChild(el("span", `${IB}__stepper-num`, String(idx + 1)));
-        dotsEl.appendChild(dot);
+        dots.appendChild(dot);
       }
-      if (isSynth) dotsEl.appendChild(el("span", `${IB}__stepper-completed`, "Completed!"));
-      // Replay is hidden on step 1 (nothing to go back to) but still shown on
-      // synthesis so the learner can jump back to the sequence.
-      replayBtn.hidden = state.step === 0 && !isSynth;
+      if (isSynth) dots.appendChild(el("span", `${IB}__stepper-completed`, "Completed!"));
+      stepper.appendChild(dots);
+      bar.appendChild(stepper);
+
+      const close = el("button", `${IB}__topbar-close`);
+      close.type = "button";
+      close.setAttribute("aria-label", "Close interactive");
+      close.innerHTML = SVG_CLOSE;
+      close.addEventListener("click", openConfirmLeave);
+      bar.appendChild(close);
+
+      return bar;
+    }
+
+    /* ---- Confirm dialogs: shown centered over the viewport, above the
+     * interactive modal. Backdrop dims the background; click backdrop or
+     * Escape dismisses (equivalent to "Stay"). --------------------------- */
+    function openConfirmDialog(opts) {
+      const backdrop = el("div", `${IB}__confirm-backdrop`);
+      const card = el("div", `${IB}__confirm`);
+      card.setAttribute("role", "alertdialog");
+      card.setAttribute("aria-modal", "true");
+      card.setAttribute("aria-labelledby", `${IB}-confirm-title`);
+      card.setAttribute("aria-describedby", `${IB}-confirm-desc`);
+      card.tabIndex = -1;
+
+      const inner = el("div", `${IB}__confirm-inner`);
+      const textGroup = el("div", `${IB}__confirm-text`);
+      const heading = el("p", `${IB}__confirm-title`, opts.title);
+      heading.id = `${IB}-confirm-title`;
+      textGroup.appendChild(heading);
+      const desc = el("p", `${IB}__confirm-desc`, opts.desc);
+      desc.id = `${IB}-confirm-desc`;
+      textGroup.appendChild(desc);
+      inner.appendChild(textGroup);
+
+      const actions = el("div", `${IB}__confirm-actions`);
+      const ghost = el("button", `${IB}__confirm-btn ${IB}__confirm-btn--ghost`);
+      ghost.type = "button";
+      ghost.textContent = opts.ghostLabel;
+      ghost.addEventListener("click", () => { dismiss(); opts.onGhost && opts.onGhost(); });
+      const primary = el("button", `${IB}__confirm-btn ${IB}__confirm-btn--primary`);
+      primary.type = "button";
+      primary.textContent = opts.primaryLabel;
+      primary.addEventListener("click", () => { dismiss(); opts.onPrimary && opts.onPrimary(); });
+      actions.appendChild(ghost);
+      actions.appendChild(primary);
+      inner.appendChild(actions);
+
+      card.appendChild(inner);
+      backdrop.appendChild(card);
+
+      function dismiss() { backdrop.remove(); }
+
+      // Click on backdrop (outside the card) dismisses.
+      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) dismiss(); });
+      // Escape dismisses; stop the event so the underlying modal doesn't also
+      // pick it up and close.
+      backdrop.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); dismiss(); }
+      });
+
+      viewport.appendChild(backdrop);
+      primary.focus();          // safe-default focus (Stay / Continue)
+    }
+
+    function openConfirmLeave() {
+      const from = state.screen === "synthesis" ? "synthesis"
+        : "step-" + (state.screen === "context" ? "context" : "feedback");
+      openConfirmDialog({
+        title: "Leave interactive?",
+        desc: "If you leave now, your progress in this interactive will be lost.",
+        ghostLabel: "Leave",
+        primaryLabel: "Stay",
+        onGhost: () => closeModal(from),
+      });
+    }
+
+    function openConfirmRestart() {
+      openConfirmDialog({
+        title: "Restart interactive?",
+        desc: "If you restart, your progress in this interactive will be lost.",
+        ghostLabel: "Restart",
+        primaryLabel: "Stay",
+        onGhost: restart,
+      });
     }
 
     function renderModalBody(slide) {
       if (!bodyEl) return;
-      updateBar();
 
       // Capture the FLIP source rect BEFORE the DOM changes (options are the
       // shared element between context and feedback in the same step).
@@ -394,13 +463,12 @@
       else if (state.screen === "feedback") content = renderFeedback();
       else content = renderSynthesis();
 
-      // Each render is wrapped in a full-size __screen so its background can
-      // extend behind the (absolute) topbar and be tinted independently. The
-      // topbar itself is drawn on top and never slides. Synthesis gets a
-      // modifier so the right (cover-image) column can extend up behind the
-      // topbar.
+      // Each render is wrapped in a full-size __screen with its own topbar as
+      // the first flow child, so the topbar scrolls with the screen instead of
+      // pinning to the top of the modal.
       const screen = el("div", `${IB}__screen`);
       if (state.screen === "synthesis") screen.classList.add(`${IB}__screen--synth`);
+      screen.appendChild(buildTopbar());
       screen.appendChild(content);
 
       // Slide transition (§7): OUTGOING screen translates to the left and the
@@ -636,19 +704,26 @@
       return wrap;
     }
 
-    /* ---- synthesis (§4.4) — Figma US-09 layout:
-     * Left col (~760): narrative (conclusion + para + additional title + bullets)
-     * Right col (~520): full-height cover image + gradient overlay + a Key
-     *   Takeaway card and the Restart / Exit buttons pinned to the bottom-right.
-     * The right col extends behind the (absolute) topbar. ---------------------*/
+    /* ---- synthesis (§4.4) — Figma US-08:
+     * Left col (~760, scrollable): flexible sections — the author picks what
+     *   to include from narrative (title + paragraph + bullets), highlights
+     *   (row of cards each with a Material icon + title + paragraph), and
+     *   compare (per-step rows showing the primary response with its
+     *   qualifier and feedback, divided by a form-gray line).
+     * Right col (~520, fixed while left scrolls): cover image (extends full
+     *   height behind the topbar) + Key Takeaway card + Restart / Exit
+     *   buttons pinned to the bottom-right.
+     * -----------------------------------------------------------------------*/
     function renderSynthesis() {
       const c = el("div", `${IB}__content ${IB}__content--synth`);
 
       const left = el("div", `${IB}__col ${IB}__col--synth-left`);
-      const v = config.synthesisVariant;
-      if (v === "compare") renderCompare(left);
-      else if (v === "record") renderRecord(left);
-      else renderMinimal(left);
+      const sections = (config.synthesis && config.synthesis.sections) || [];
+      sections.forEach((sec, idx) => {
+        if (sec.type === "narrative") renderNarrativeSection(left, sec, idx === 0);
+        else if (sec.type === "highlights") renderHighlightsSection(left, sec);
+        else if (sec.type === "compare") renderCompareSection(left);
+      });
       c.appendChild(left);
 
       const right = el("div", `${IB}__col ${IB}__col--synth-right`);
@@ -684,7 +759,7 @@
       const restartIco = el("span", `${IB}__synth-btn-icon`);
       restartIco.innerHTML = SVG_REPLAY;
       restartBtn.appendChild(restartIco);
-      restartBtn.addEventListener("click", restart_);
+      restartBtn.addEventListener("click", openConfirmRestart);
 
       const exitBtn = el("button", `${IB}__synth-btn ${IB}__synth-btn--exit`);
       exitBtn.type = "button";
@@ -704,63 +779,64 @@
     }
     function restart_() { restart(); }
 
-    function renderMinimal(left) {
-      const s = config.synthesis.minimal;   // authored content only (§R7)
-
-      const sec1 = el("div", `${IB}__synth-section`);
-      const t1 = el("h2", `${IB}__synth-title`, s.conclusionTitle);
-      t1.id = `${IB}-dlg-title`;
-      sec1.appendChild(t1);
-      sec1.appendChild(el("p", `${IB}__synth-para`, s.outcomePara));
-      left.appendChild(sec1);
-
-      const sec2 = el("div", `${IB}__synth-section`);
-      sec2.appendChild(el("h3", `${IB}__synth-sub`, s.additionalTitle));
-      const ul = el("ul", `${IB}__synth-list`);
-      s.bullets.forEach((b) => ul.appendChild(el("li", null, b)));
-      sec2.appendChild(ul);
-      left.appendChild(sec2);
+    /* ---- Narrative section: title + paragraph + (optional) bullets. ------ */
+    function renderNarrativeSection(parent, s, isFirst) {
+      const sec = el("div", `${IB}__synth-section`);
+      const t = el("h2", `${IB}__synth-title`, s.title);
+      if (isFirst) t.id = `${IB}-dlg-title`;
+      sec.appendChild(t);
+      if (s.paragraph) sec.appendChild(el("p", `${IB}__synth-para`, s.paragraph));
+      if (Array.isArray(s.bullets) && s.bullets.length) {
+        const ul = el("ul", `${IB}__synth-list`);
+        s.bullets.forEach((b) => ul.appendChild(el("li", null, b)));
+        sec.appendChild(ul);
+      }
+      parent.appendChild(sec);
     }
-    function renderCompare(left) {
-      const s = config.synthesis.compare;
-      const t = el("h2", `${IB}__synth-title`, s.title); t.id = `${IB}-dlg-title`;
-      left.appendChild(t);
-      left.appendChild(el("p", `${IB}__synth-para`, s.intro));
-      const table = el("div", `${IB}__compare`);
-      steps.forEach((step, i) => {                   // one row per step (§4.4)
-        const row = el("div", `${IB}__compare-row`);
-        const pIdx = state.primary[i];
-        const primary = pIdx != null ? step.options[pIdx] : null;   // learner's primary response (§R1)
-        row.appendChild(el("div", `${IB}__compare-primary`, primary ? primary.label : "—"));
-        const rc = el("div", `${IB}__compare-fb`);
-        if (primary) {
-          const q = qualOf(primary.qualifier);
-          const qi = el("span", `${IB}__qual ${IB}__qual--${q.tone} is-inline`);
-          qi.appendChild(el("span", `${IB}__qual-icon`, q.icon));
-          qi.appendChild(el("span", `${IB}__qual-label`, q.label));
-          rc.appendChild(qi);
-          rc.appendChild(el("p", null, primary.feedback));
-        }
-        row.appendChild(rc);
-        table.appendChild(row);
+
+    /* ---- Highlights section: row of author-configured cards. ------------- */
+    function renderHighlightsSection(parent, s) {
+      if (!Array.isArray(s.items) || !s.items.length) return;
+      const wrap = el("div", `${IB}__synth-highlights`);
+      s.items.forEach((it) => {
+        const card = el("div", `${IB}__synth-highlight`);
+        const head = el("div", `${IB}__synth-highlight-head`);
+        const iconEl = el("span", `${IB}__synth-highlight-icon`);
+        iconEl.innerHTML = ico(it.icon || "info");
+        head.appendChild(iconEl);
+        head.appendChild(el("span", `${IB}__synth-highlight-title`, it.title || ""));
+        card.appendChild(head);
+        if (it.paragraph) card.appendChild(el("p", `${IB}__synth-highlight-para`, it.paragraph));
+        wrap.appendChild(card);
       });
-      left.appendChild(table);
+      parent.appendChild(wrap);
     }
-    function renderRecord(left) {
-      const s = config.synthesis.record;
-      const t = el("h2", `${IB}__synth-title`, s.title); t.id = `${IB}-dlg-title`;
-      left.appendChild(t);
-      left.appendChild(el("p", `${IB}__synth-para`, s.intro));
-      const ol = el("ol", `${IB}__record`);
-      steps.forEach((step, i) => {                   // ordered, one per step (§4.4)
-        const li = el("li", `${IB}__record-item`);
-        const pIdx = state.primary[i];
-        const primary = pIdx != null ? step.options[pIdx] : null;
-        li.appendChild(el("div", `${IB}__record-resp`, primary ? primary.label : "—"));
-        if (primary) li.appendChild(el("p", `${IB}__record-fb`, primary.feedback));
-        ol.appendChild(li);
+
+    /* ---- Compare section: one row per option, grouped by step. Each row
+     * shows the option label (left) and its qualifier + response feedback
+     * (right), divided by a form-gray line. Every option appears — the whole
+     * response palette across the interactive. -----------------------------*/
+    function renderCompareSection(parent) {
+      const table = el("div", `${IB}__synth-compare`);
+      steps.forEach((step) => {
+        step.options.forEach((opt) => {
+          const row = el("div", `${IB}__synth-compare-row`);
+          row.appendChild(el("div", `${IB}__synth-compare-primary`, opt.label));
+
+          const right = el("div", `${IB}__synth-compare-right`);
+          const q = qualOf(opt.qualifier);
+          const qRow = el("div", `${IB}__synth-compare-qual ${IB}__qual--${q.tone}`);
+          const qi = el("span", `${IB}__synth-compare-qual-icon`);
+          qi.innerHTML = q.svg;
+          qRow.appendChild(qi);
+          qRow.appendChild(el("span", `${IB}__synth-compare-qual-label`, q.label));
+          right.appendChild(qRow);
+          right.appendChild(el("p", `${IB}__synth-compare-fb`, opt.feedback));
+          row.appendChild(right);
+          table.appendChild(row);
+        });
       });
-      left.appendChild(ol);
+      parent.appendChild(table);
     }
 
     // initial paint
@@ -774,20 +850,32 @@
    * NAMED CONFIGURATIONS (§8/§10) — happy path + edge cases.
    * ======================================================================== */
   const q = (label, qualifier, feedback) => ({ label, qualifier, feedback });
-  const takeaway = {
-    takeawayTitle: "Judgement beats recall",
-    takeawayPara: "Behaviour has many causes at once; the skill is choosing which lens fits the situation in front of you.",
-  };
-  const synthAll = {
-    takeawayTitle: takeaway.takeawayTitle, takeawayPara: takeaway.takeawayPara,
-    minimal: {
-      conclusionTitle: "There is no single cause",
-      outcomePara: "Across these decisions you weighed situation against disposition — the balance shifts case by case.",
-      additionalTitle: "Also worth keeping",
-      bullets: ["Context is rarely neutral.", "A framework that fits a classroom may not fit a crowd.", "Judgement is built one case at a time."],
-    },
-    compare: { title: "How your responses compared", intro: "Each row is the response you reached for first, before feedback." },
-    record: { title: "Your step-by-step recap", intro: "A record of the response you gave at each step." },
+  /* Flexible synthesis: the author picks which sections to include and in
+   * what order. Same object shape across every preset. */
+  const flexibleSynth = {
+    takeawayPara: "Judgement beats recall. Behaviour has many causes at once; the skill is choosing which lens fits the situation in front of you.",
+    sections: [
+      {
+        type: "narrative",
+        title: "There is no single cause",
+        paragraph: "Across these decisions you weighed situation against disposition — the balance shifts case by case, and the point isn't to find a formula but to notice which lens the moment is asking for.",
+        bullets: [
+          "Context is rarely neutral.",
+          "A framework that fits a classroom may not fit a crowd.",
+          "Judgement is built one case at a time.",
+        ],
+      },
+      {
+        type: "highlights",
+        items: [
+          { icon: "spa",        title: "Situation vs disposition", paragraph: "Ask which lens the moment demands, not which one you default to." },
+          { icon: "psychology", title: "Cost of habit",             paragraph: "Familiar patterns can quietly miss what has shifted in the situation." },
+        ],
+      },
+      {
+        type: "compare",
+      },
+    ],
   };
 
   const step = (over) => Object.assign({
@@ -814,39 +902,39 @@
     {
       id: "choose-minimal", group: "Default", label: "Choose-one · minimal",
       description: "Two steps in choose-one mode; minimal synthesis. Options lock after the first pick.",
-      config: { name: "What shapes behaviour?", cover: COVER, launch: { intentTitle: "Weigh situation against disposition", contextParagraph: "You will make two judgement calls, then see how your reasoning holds up. Choose the response you think is best — your first choice is what counts.", launchLabel: "Launch Interactive" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step(), step({ contextTitle: "A second situation" })] },
+      config: { name: "What shapes behaviour?", cover: COVER, launch: { intentTitle: "Weigh situation against disposition", contextParagraph: "You will make two judgement calls, then see how your reasoning holds up. Choose the response you think is best — your first choice is what counts.", launchLabel: "Launch Interactive" }, synthesis: flexibleSynth, steps: [step(), step({ contextTitle: "A second situation" })] },
     },
     {
       id: "explore-compare", group: "Optional configuration", label: "Explore-all · compare",
       description: "Explore every option before continuing; compare synthesis reports your primary response per step.",
-      config: { name: "Reading a situation", cover: COVER, launch: { intentTitle: "Explore every angle", contextParagraph: "For each step, explore all the responses and their feedback, then compare how they line up.", launchLabel: "Start exploring" }, synthesisVariant: "compare", synthesis: synthAll, steps: [exploreStep(), exploreStep({ contextTitle: "Another angle" })] },
+      config: { name: "Reading a situation", cover: COVER, launch: { intentTitle: "Explore every angle", contextParagraph: "For each step, explore all the responses and their feedback, then compare how they line up.", launchLabel: "Start exploring" }, synthesis: flexibleSynth, steps: [exploreStep(), exploreStep({ contextTitle: "Another angle" })] },
     },
     {
       id: "mixed-record", group: "Optional configuration", label: "Mixed modes · record",
       description: "Step 1 asks for judgement (choose-one), step 2 for exploration (explore-all); record synthesis.",
-      config: { name: "Judgement, then exploration", cover: COVER, launch: { intentTitle: "First decide, then explore", contextParagraph: "The first step asks for your best judgement. The second asks you to explore every response. The recap records what you did.", launchLabel: "Launch Interactive" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Now explore" })] },
+      config: { name: "Judgement, then exploration", cover: COVER, launch: { intentTitle: "First decide, then explore", contextParagraph: "The first step asks for your best judgement. The second asks you to explore every response. The recap records what you did.", launchLabel: "Launch Interactive" }, synthesis: flexibleSynth, steps: [step(), exploreStep({ contextTitle: "Now explore" })] },
     },
     {
       id: "record-3", group: "Optional configuration", label: "Three steps · record",
       description: "Three steps, record synthesis — the step-by-step recap.",
-      config: { name: "Three decisions", cover: COVER, launch: { intentTitle: "Three decisions in a row", contextParagraph: "Work through three related decisions; the recap lists your response to each.", launchLabel: "Launch Interactive" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Second decision" }), step({ contextTitle: "Third decision" })] },
+      config: { name: "Three decisions", cover: COVER, launch: { intentTitle: "Three decisions in a row", contextParagraph: "Work through three related decisions; the recap lists your response to each.", launchLabel: "Launch Interactive" }, synthesis: flexibleSynth, steps: [step(), exploreStep({ contextTitle: "Second decision" }), step({ contextTitle: "Third decision" })] },
     },
 
     /* ---- Edge cases (§10) ---- */
     {
       id: "single-compare", group: "Edge cases", label: "Single step → Compare on step 1",
       description: "A one-step interactive: the action button reads Compare on step 1, and Return is hidden.",
-      config: { name: "One decision", cover: COVER, launch: { intentTitle: "A single judgement", contextParagraph: "Just one step. The action button reads Compare, not Continue, because this is already the last step.", launchLabel: "Launch Interactive" }, synthesisVariant: "compare", synthesis: synthAll, steps: [step()] },
+      config: { name: "One decision", cover: COVER, launch: { intentTitle: "A single judgement", contextParagraph: "Just one step. The action button reads Compare, not Continue, because this is already the last step.", launchLabel: "Launch Interactive" }, synthesis: flexibleSynth, steps: [step()] },
     },
     {
       id: "two-options", group: "Edge cases", label: "Step with two options",
       description: "Explore-all with only two options — the gate is satisfied quickly, which is correct.",
-      config: { name: "A quick gate", cover: COVER, launch: { intentTitle: "Only two responses", contextParagraph: "With two options in explore-all, the gate opens after both are explored.", launchLabel: "Launch Interactive" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [exploreStep({ options: [q("Act on the cues", "best", "You read the moment first."), q("Fall back on habit", "incorrect", "Habit misses what has changed here.")] })] },
+      config: { name: "A quick gate", cover: COVER, launch: { intentTitle: "Only two responses", contextParagraph: "With two options in explore-all, the gate opens after both are explored.", launchLabel: "Launch Interactive" }, synthesis: flexibleSynth, steps: [exploreStep({ options: [q("Act on the cues", "best", "You read the moment first."), q("Fall back on habit", "incorrect", "Habit misses what has changed here.")] })] },
     },
     {
       id: "long-text", group: "Edge cases", label: "Long option / feedback text",
       description: "Long option labels and long feedback must wrap without breaking layout.",
-      config: { name: "Wrapping under pressure", cover: COVER, launch: { intentTitle: "When the text runs long", contextParagraph: "Some authors write long options and long feedback. The layout has to hold — both wrap without breaking the two-column structure or the modal.", launchLabel: "Launch Interactive" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step({ options: [
+      config: { name: "Wrapping under pressure", cover: COVER, launch: { intentTitle: "When the text runs long", contextParagraph: "Some authors write long options and long feedback. The layout has to hold — both wrap without breaking the two-column structure or the modal.", launchLabel: "Launch Interactive" }, synthesis: flexibleSynth, steps: [step({ options: [
         q("Read the situation carefully before acting, giving weight to the specific cues in front of you rather than defaulting to what usually works", "best", "A strong choice. Reading the situation first, before reaching for a habitual response, is exactly the judgement this step is testing — and it is a habit that transfers across very different settings, from a classroom to a negotiation to a decision made alone under real uncertainty."),
         q("Rely on the experience you have accumulated over many similar past situations", "incorrect", "Experience is valuable, but the trap here is that this situation only looks similar. The cues that matter have shifted, and a response tuned to the old pattern will miss them. This is the failure mode the step is designed to surface."),
         q("Pause and gather more information before committing to any single course of action", "correct", "Reasonable and often wise — though notice that at some point the task itself is to exercise judgement under uncertainty, because more information is not always available."),
@@ -855,12 +943,12 @@
     {
       id: "no-cover", group: "Edge cases", label: "Missing cover image",
       description: "No cover image supplied — the launch and synthesis layouts must not collapse.",
-      config: { name: "No cover supplied", cover: null, launch: { intentTitle: "Layout holds without a cover", contextParagraph: "When no cover image is provided, the column reserves its space and the layout stays intact.", launchLabel: "Launch Interactive" }, synthesisVariant: "minimal", synthesis: synthAll, steps: [step()] },
+      config: { name: "No cover supplied", cover: null, launch: { intentTitle: "Layout holds without a cover", contextParagraph: "When no cover image is provided, the column reserves its space and the layout stays intact.", launchLabel: "Launch Interactive" }, synthesis: flexibleSynth, steps: [step()] },
     },
     {
       id: "five-steps", group: "Edge cases", label: "Five steps (maximum)",
       description: "The maximum of five steps (§R6). Return works across all of them.",
-      config: { name: "The full length", cover: COVER, launch: { intentTitle: "Five decisions", contextParagraph: "Five steps is the maximum an interactive may have. Continue moves forward; Return moves back with state preserved.", launchLabel: "Launch Interactive" }, synthesisVariant: "record", synthesis: synthAll, steps: [step(), exploreStep({ contextTitle: "Step two" }), step({ contextTitle: "Step three" }), exploreStep({ contextTitle: "Step four" }), step({ contextTitle: "Step five" })] },
+      config: { name: "The full length", cover: COVER, launch: { intentTitle: "Five decisions", contextParagraph: "Five steps is the maximum an interactive may have. Continue moves forward; Return moves back with state preserved.", launchLabel: "Launch Interactive" }, synthesis: flexibleSynth, steps: [step(), exploreStep({ contextTitle: "Step two" }), step({ contextTitle: "Step three" }), exploreStep({ contextTitle: "Step four" }), step({ contextTitle: "Step five" })] },
     },
   ];
   const interactivePresetById = (id) => INTERACTIVE_PRESETS.find((x) => x.id === id) || INTERACTIVE_PRESETS[0];
