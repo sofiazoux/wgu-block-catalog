@@ -424,9 +424,22 @@ body.is-interactive-preview .topbar { display: none; }
   grid-template-rows: 1fr;
 }
 .wgu-block-interactive__col--feedback {
-  padding: 0 var(--pgn-wgu-spacing-48) 212px var(--pgn-wgu-spacing-24);
-  gap: var(--pgn-wgu-spacing-16);
+  position: relative;
+  padding: 0;
+}
+/* Wrapper matches Figma US-08: 96px symmetric horizontal padding, and extends
+ * up behind the topbar+gap (64+48=112px) so justify-content: center lands the
+ * content on the modal's vertical middle — not the below-topbar middle. */
+.wgu-block-interactive__feedback-wrap {
+  position: absolute;
+  top: -112px;
+  bottom: 0;
+  left: 96px;
+  right: 96px;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
+  gap: var(--pgn-wgu-spacing-16);
 }
 
 /* ---- Context Frame (left col) ------------------------------------------- */

@@ -617,17 +617,22 @@
       c.appendChild(left);
 
       // Right: qualifier row (icon + label) + response feedback text.
+      // Inner wrap is absolutely positioned so it can extend behind the topbar
+      // (§4.3, Figma US-08), which lets centering land on the modal middle
+      // instead of the below-topbar middle.
       const right = el("div", `${IB}__col ${IB}__col--feedback`);
       const opt = state.displayed[i];
       const o = step.options[opt];
       const q = qualOf(o.qualifier);
+      const wrap = el("div", `${IB}__feedback-wrap`);
       const qEl = el("div", `${IB}__qual ${IB}__qual--${q.tone}`);
       const qIcon = el("span", `${IB}__qual-icon`);
       qIcon.innerHTML = q.svg;
       qEl.appendChild(qIcon);
       qEl.appendChild(el("span", `${IB}__qual-label`, q.label));   // text label always (§8)
-      right.appendChild(qEl);
-      right.appendChild(el("p", `${IB}__feedback-text`, o.feedback));
+      wrap.appendChild(qEl);
+      wrap.appendChild(el("p", `${IB}__feedback-text`, o.feedback));
+      right.appendChild(wrap);
       c.appendChild(right);
       return c;
     }
