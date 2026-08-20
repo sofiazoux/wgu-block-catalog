@@ -157,6 +157,7 @@
         ex.add(opt);
         state.displayed[i] = opt;
         flipOptionsFrom = bodyEl.querySelector(`.${IB}__step-body`);   // shared element
+        flipEnterSide = "right";            // feedback column slides in from the right
         toScreen("feedback", "Learner selects an option", "step-context", false);
         return;
       }
@@ -166,6 +167,7 @@
       state.displayed[i] = opt;
       if (state.screen === "context") {
         flipOptionsFrom = bodyEl.querySelector(`.${IB}__step-body`);   // shared element
+        flipEnterSide = "right";            // feedback column slides in from the right
         toScreen("feedback", "Learner selects an option", "step-context", false);
       } else {
         // already in feedback → update pane in place, NO slide (§7, §R4)
