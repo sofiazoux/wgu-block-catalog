@@ -419,14 +419,20 @@ body.is-interactive-preview .topbar { display: none; }
   display: flex; flex-direction: column;
   gap: var(--pgn-wgu-spacing-24);
 }
+/* Row sizes to intrinsic content (= step-body height) so both cols share the
+ * same effective height. That lets the feedback response align vertically
+ * with the options block on the left, matching Figma US-08. */
 .wgu-block-interactive__content--feedback {
-  min-height: 0;
-  grid-template-rows: 1fr;
+  align-content: start;
 }
 .wgu-block-interactive__col--feedback {
-  padding: 0 var(--pgn-wgu-spacing-48) 212px var(--pgn-wgu-spacing-24);
-  gap: var(--pgn-wgu-spacing-16);
+  padding: 0 96px 20px 96px;   /* 96 horiz matches Figma; 20 bottom nudges the wrap up so it centres on the OPTIONS row, not the step-body middle (button is ~20px taller than the restate line, biasing the midpoint down) */
   justify-content: center;
+}
+.wgu-block-interactive__feedback-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pgn-wgu-spacing-16);
 }
 
 /* ---- Context Frame (left col) ------------------------------------------- */
