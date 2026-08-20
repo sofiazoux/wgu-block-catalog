@@ -419,10 +419,14 @@ body.is-interactive-preview .topbar { display: none; }
   display: flex; flex-direction: column;
   gap: var(--pgn-wgu-spacing-24);
 }
+.wgu-block-interactive__content--feedback {
+  min-height: 0;
+  grid-template-rows: 1fr;
+}
 .wgu-block-interactive__col--feedback {
-  padding: 60px var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);   /* Figma 60px top offset */
+  padding: 0 var(--pgn-wgu-spacing-48) 212px var(--pgn-wgu-spacing-24);
   gap: var(--pgn-wgu-spacing-16);
-  align-self: start;
+  justify-content: center;
 }
 
 /* ---- Context Frame (left col) ------------------------------------------- */
