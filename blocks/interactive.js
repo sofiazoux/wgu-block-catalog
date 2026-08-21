@@ -450,6 +450,31 @@
       });
     }
 
+    // Sync the feedback-wrap's vertical bounds to the options element so the
+    // response sits centred on the same row as the options (Figma US-08).
+    // offsetTop is layout-based, so this remains stable during FLIP / slide
+    // transforms on ancestors.
+    let feedbackSyncCleanup = null;
+    function syncFeedbackWrap(screen) {
+      const options = screen.querySelector(`.${IB}__options`);
+      const wrap = screen.querySelector(`.${IB}__feedback-wrap`);
+      const col = screen.querySelector(`.${IB}__col--feedback`);
+      if (!options || !wrap || !col) return;
+      wrap.style.top = (options.offsetTop - col.offsetTop) + "px";
+      wrap.style.height = options.offsetHeight + "px";
+      wrap.style.bottom = "auto";
+    }
+    function attachFeedbackSync(screen) {
+      if (feedbackSyncCleanup) feedbackSyncCleanup();
+      const doSync = () => syncFeedbackWrap(screen);
+      requestAnimationFrame(doSync);
+      window.addEventListener("resize", doSync);
+      feedbackSyncCleanup = () => {
+        window.removeEventListener("resize", doSync);
+        feedbackSyncCleanup = null;
+      };
+    }
+
     function renderModalBody(slide) {
       if (!bodyEl) return;
 
@@ -493,6 +518,8 @@
         };
         screen.addEventListener("animationend", cleanup, { once: true });
         setTimeout(cleanup, 1500);   // safety net if animationend never fires
+        if (state.screen === "feedback") attachFeedbackSync(screen);
+        else if (feedbackSyncCleanup) feedbackSyncCleanup();
         return;
       }
 
@@ -555,6 +582,9 @@
           }
         }
       }
+
+      if (state.screen === "feedback") attachFeedbackSync(screen);
+      else if (feedbackSyncCleanup) feedbackSyncCleanup();
     }
 
     /* ---- step-context (§4.2) ---- */
