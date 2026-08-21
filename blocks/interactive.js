@@ -118,6 +118,12 @@
 
     function openModal() {
       lastFocus = document.activeElement;
+      // Opening the interactive is always a fresh entry — start at step 1
+      // with no prior selections, even if the learner closed mid-run.
+      state.step = 0;
+      state.primary = {};
+      state.explored = {};
+      state.displayed = {};
       state.screen = "context";
       setEdge("launch", "Launch", "step-context");
       renderRoot();
@@ -306,12 +312,19 @@
      * it scrolls away with the content instead of behaving like a sticky
      * header. ---------------------------------------------------------------*/
     let bodyEl = null;
+    let topbarEl = null;
     function renderModal() {
       const modal = el("div", `${IB}__modal`);
       modal.setAttribute("role", "dialog");
       modal.setAttribute("aria-modal", "true");
       modal.setAttribute("aria-labelledby", `${IB}-dlg-title`);
       modal.tabIndex = -1;
+
+      // Topbar lives at the modal level (outside .__screen), so it doesn't
+      // ride the slide transform between screens — its DOM is rebuilt in
+      // place on each render so state (active dot, replay hidden) updates.
+      topbarEl = buildTopbar();
+      modal.appendChild(topbarEl);
 
       bodyEl = el("div", `${IB}__body`);
       modal.appendChild(bodyEl);
@@ -358,7 +371,7 @@
       for (let idx = 0; idx < steps.length; idx++) {
         if (idx > 0) dots.appendChild(el("span", `${IB}__stepper-line`));
         const dot = el("div", `${IB}__stepper-dot`);
-        if (isSynth || idx === state.step) dot.classList.add("is-active");
+        if (isSynth || idx <= state.step) dot.classList.add("is-active");   // active + already-passed share the same "active" fill (Figma)
         dot.appendChild(el("span", `${IB}__stepper-num`, String(idx + 1)));
         dots.appendChild(dot);
       }
@@ -490,12 +503,18 @@
       else if (state.screen === "feedback") content = renderFeedback();
       else content = renderSynthesis();
 
-      // Each render is wrapped in a full-size __screen with its own topbar as
-      // the first flow child, so the topbar scrolls with the screen instead of
-      // pinning to the top of the modal.
+      // Refresh the modal-level topbar in place so the stepper reflects the
+      // new state without sliding away with the screen (see renderModal).
+      if (topbarEl) {
+        const newTopbar = buildTopbar();
+        topbarEl.replaceWith(newTopbar);
+        topbarEl = newTopbar;
+      }
+
+      // Each render is wrapped in a full-size __screen; topbar lives at the
+      // modal level, so the screen only carries the content that should slide.
       const screen = el("div", `${IB}__screen`);
       if (state.screen === "synthesis") screen.classList.add(`${IB}__screen--synth`);
-      screen.appendChild(buildTopbar());
       screen.appendChild(content);
 
       // Slide transition (§7): OUTGOING screen translates to the left and the
