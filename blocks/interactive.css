@@ -110,6 +110,13 @@ body.is-interactive-preview {
   background: var(--pgn-wgu-background-light-gray);
 }
 body.is-interactive-preview .topbar { display: none; }
+/* Preview mode: the modal fills the full browser viewport (no aspect-ratio
+ * letterbox). Inside, the topbar sticks to top and the action to bottom;
+ * only the middle content scrolls. */
+body.is-interactive-preview .wgu-block-interactive__viewport.is-modal-open {
+  aspect-ratio: auto;
+  height: 100vh;
+}
 #app.preview-mode { min-height: 100vh; padding: 0; }
 .preview-stage {
   container-type: inline-size;
@@ -261,9 +268,12 @@ body.is-interactive-preview .topbar { display: none; }
  * content instead of pinning. Transparent bg — the screen's mint (or the
  * step-advance pulse tint) shows through. z-index keeps it drawn above the
  * synth cover image which extends up to the top of the screen. ------------ */
+/* Topbar is an absolute overlay at the top of the modal, so screens (and
+ * things like the synthesis cover illustration) can extend behind it. It
+ * stays put while __screen slides horizontally between states. */
 .wgu-block-interactive__topbar {
-  flex: none;
-  position: relative;
+  position: absolute;
+  top: 0; left: 0; right: 0;
   z-index: 3;
   height: 64px;
   display: flex;
@@ -313,24 +323,23 @@ body.is-interactive-preview .topbar { display: none; }
   display: flex; align-items: center;
 }
 .wgu-block-interactive__stepper-dot {
-  width: 24px; height: 24px;
+  width: 32px; height: 32px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  background: transparent;
+  border: none;
+  background: #285672;   /* Figma: default (upcoming) step fill */
   color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--pgn-wgu-family-lato);
   font-weight: 700;
-  font-size: 13px;
-  line-height: 1;
+  font-size: 18px;
+  line-height: 28px;
   flex: none;
 }
 .wgu-block-interactive__stepper-dot.is-active {
-  background: var(--itv-chip);
-  border-color: var(--itv-chip);
+  background: var(--itv-chip);   /* Figma: active + already-passed */
 }
 .wgu-block-interactive__stepper-line {
-  width: 12px; height: 1px;
+  width: 17px; height: 1px;
   background: currentColor;
   opacity: 0.35;
   flex: none;
@@ -349,26 +358,39 @@ body.is-interactive-preview .topbar { display: none; }
 .wgu-block-interactive__topbar-close svg { width: 32px; height: 32px; }
 .wgu-block-interactive__topbar-close .material-symbols-outlined { font-size: 32px; }
 
+/* Body fills the modal (including behind the absolute topbar) so screens
+ * with edge-to-edge content (e.g. synthesis cover) can extend to the modal
+ * top. Screens position themselves absolutely inside so they can slide over
+ * each other during transitions. */
 .wgu-block-interactive__body {
   position: absolute;
-  inset: 0;                                 /* covers whole modal — screens
-                                             * extend behind the top bar too   */
-  overflow: hidden;                         /* clip the sliding screens        */
+  inset: 0;
+  overflow: hidden;                         /* clip the sliding screens */
 }
 .wgu-block-interactive__screen {
   position: absolute;
-  inset: 0;                                 /* fills body top-to-bottom        */
+  inset: 0;                                 /* fills body edge-to-edge; content inside reserves space below the topbar via padding */
   background-color: var(--pgn-wgu-background-light-gray);
-  overflow-y: auto;
+  /* Explicit x=hidden, y=auto — with overflow-y: auto alone, browsers imply
+   * overflow-x: auto, and a transient horizontal scrollbar during the slide
+   * animation would steal ~16px of viewport height and bump sticky content up. */
+  overflow: hidden auto;
+  padding-top: 112px;                       /* topbar (64) + gap below topbar (48) */
   display: flex;
   flex-direction: column;
-  gap: 48px;                                /* Figma: 48px gap after the topbar */
+  /* Seamless scroll: hide the scrollbar chrome but keep wheel/touch scrolling. */
+  scrollbar-width: none;                    /* Firefox */
+  -ms-overflow-style: none;                 /* IE/Edge legacy */
 }
+.wgu-block-interactive__screen::-webkit-scrollbar { display: none; }   /* Chrome / Safari */
 .wgu-block-interactive__screen > .wgu-block-interactive__content { flex: 1; }
 /* Synthesis: only the left col scrolls internally so the right col (cover +
- * takeaway + buttons) stays put while the narrative/highlights/compare grow. */
+ * takeaway + buttons) stays put while the narrative/highlights/compare grow.
+ * No top padding here so the cover illustration can reach the modal top —
+ * col--synth-left carries its own padding-top to sit below the topbar. */
 .wgu-block-interactive__screen--synth {
   overflow: hidden;
+  padding-top: 0;
 }
 .wgu-block-interactive__screen--synth > .wgu-block-interactive__content {
   height: 100%;
@@ -389,7 +411,7 @@ body.is-interactive-preview .topbar { display: none; }
   gap: var(--pgn-wgu-spacing-48);
 }
 .wgu-block-interactive__col--step {
-  padding: 0 var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);   /* context: right col */
+  padding: 0 var(--pgn-wgu-spacing-48) 0 var(--pgn-wgu-spacing-24);   /* context: right col; bottom spacing handled by sticky __action */
   gap: var(--pgn-wgu-spacing-24);
 }
 /* Feedback screen: step column moves to the LEFT and gains a 32px column for
@@ -414,24 +436,33 @@ body.is-interactive-preview .topbar { display: none; }
 .wgu-block-interactive__return-btn:hover { opacity: 1; }
 .wgu-block-interactive__return-btn svg { width: 100%; height: 100%; }
 .wgu-block-interactive__return-btn .material-symbols-outlined { font-size: 32px; }
+/* Fill the column so margin-top: auto on __action pushes the button to the
+ * bottom regardless of the options block's height. */
 .wgu-block-interactive__step-body {
   min-width: 0;
   display: flex; flex-direction: column;
   gap: var(--pgn-wgu-spacing-24);
+  min-height: 100%;
 }
-/* Row sizes to intrinsic content (= step-body height) so both cols share the
- * same effective height. That lets the feedback response align vertically
- * with the options block on the left, matching Figma US-08. */
+/* Feedback col: full row height (like context) so the response wrapper can be
+ * absolutely positioned to match the options element's vertical bounds. JS
+ * sets wrap top/height after render; content inside is flex-centred. */
 .wgu-block-interactive__content--feedback {
-  align-content: start;
+  min-height: 0;
+  grid-template-rows: 1fr;
 }
 .wgu-block-interactive__col--feedback {
-  padding: 0 96px 20px 96px;   /* 96 horiz matches Figma; 20 bottom nudges the wrap up so it centres on the OPTIONS row, not the step-body middle (button is ~20px taller than the restate line, biasing the midpoint down) */
-  justify-content: center;
+  position: relative;
+  padding: 0;
 }
 .wgu-block-interactive__feedback-wrap {
+  position: absolute;
+  left: 96px;
+  right: 96px;
+  /* top and height are set by JS to match the options element */
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--pgn-wgu-spacing-16);
 }
 
@@ -594,9 +625,19 @@ body.is-interactive-preview .topbar { display: none; }
 }
 .wgu-block-interactive__option.is-locked .wgu-block-interactive__option-content { opacity: 0.6; }
 
-/* ---- Action button — outlined pill, disabled by default (§8) ------------ */
+/* ---- Action button — outlined pill, disabled by default (§8)
+ * Anchored to the bottom of step-body via margin-top: auto, and stays there
+ * during scroll via position: sticky. Slides horizontally with the screen
+ * during transitions (same __screen transform), so the horizontal motion
+ * matches the rest of the content. */
 .wgu-block-interactive__action {
-  display: flex; justify-content: flex-end;      /* follows options with __step-body gap */
+  display: flex; justify-content: flex-end;
+  margin-top: auto;
+  position: sticky;
+  bottom: 32px;
+  z-index: 2;
+  background: var(--pgn-wgu-background-light-gray);
+  padding: var(--pgn-wgu-spacing-8) 0;
 }
 .wgu-block-interactive__action-btn {
   appearance: none; -webkit-appearance: none;
@@ -694,11 +735,15 @@ body.is-interactive-preview .topbar { display: none; }
 
 /* ---- Left column: narrative + highlights + compare, scrollable ---------- */
 .wgu-block-interactive__col--synth-left {
-  padding: 0 var(--pgn-wgu-spacing-32) var(--pgn-wgu-spacing-32) var(--pgn-wgu-spacing-32);
+  padding: 112px var(--pgn-wgu-spacing-32) var(--pgn-wgu-spacing-32) var(--pgn-wgu-spacing-32);  /* top padding = topbar (64) + gap (48), so narrative sits below the topbar even though the col extends to the modal top */
   gap: var(--pgn-wgu-spacing-32);
   overflow-y: auto;
   min-height: 0;                            /* allow shrink so overflow works  */
+  /* Seamless scroll: hide the scrollbar chrome but keep wheel/touch scrolling. */
+  scrollbar-width: none;                    /* Firefox */
+  -ms-overflow-style: none;                 /* IE/Edge legacy */
 }
+.wgu-block-interactive__col--synth-left::-webkit-scrollbar { display: none; }
 .wgu-block-interactive__synth-section {
   display: flex; flex-direction: column;
   gap: var(--pgn-wgu-spacing-8);
@@ -731,13 +776,14 @@ body.is-interactive-preview .topbar { display: none; }
 }
 .wgu-block-interactive__synth-list li { margin: 0; }
 
-/* ---- Right column: cover + gradient + takeaway + actions. The cover image
- * and overlay extend UP by 112px (topbar 64 + gap 48) so the illustration
- * fills the full screen height, including the area behind the close icon. */
+/* ---- Right column: cover + gradient + takeaway + actions.
+ * The col spans the full modal height (synth screen has inset: 0), so the
+ * cover illustration fills the whole col — including the area behind the
+ * topbar chrome, which is a transparent overlay on top of it. */
 .wgu-block-interactive__col--synth-right {
   position: relative;
   padding: 48px;
-  overflow: visible;                        /* let cover img escape upward    */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -745,18 +791,15 @@ body.is-interactive-preview .topbar { display: none; }
 }
 .wgu-block-interactive__synth-cover-img {
   position: absolute;
-  top: -112px;
-  left: 0; right: 0; bottom: 0;
+  inset: 0;
   width: 100%;
-  height: calc(100% + 112px);
+  height: 100%;
   object-fit: cover;
   z-index: 0;
 }
 .wgu-block-interactive__synth-cover-overlay {
   position: absolute;
-  top: -112px;
-  left: 0; right: 0; bottom: 0;
-  height: calc(100% + 112px);
+  inset: 0;
   background: linear-gradient(
     to bottom,
     rgba(255, 255, 255, 0) 60.5%,
@@ -928,7 +971,7 @@ body.is-interactive-preview .topbar { display: none; }
   font-size: 18px;
   line-height: 28px;
   color: var(--pgn-wgu-color-text-pure-white);
-  margin-left: var(--pgn-wgu-spacing-8);
+  margin-left: var(--pgn-wgu-spacing-24);   /* Figma: 24px gap after the last dot */
   white-space: nowrap;
 }
 
