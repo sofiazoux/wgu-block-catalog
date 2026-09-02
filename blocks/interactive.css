@@ -29,6 +29,10 @@
   --itv-soft:      var(--pgn-wgu-background-light-gray);
   --itv-chip:      #399fb0;   /* exact teal used in the Figma chip */
 
+  /* Coral CTA/action colour failed WCAG contrast against white; swap the
+   * accent token to an accessible blue inside the interactive only. */
+  --pgn-wgu-background-accent-coral: #3376C3;
+
   font-family: var(--pgn-wgu-family-lato);
   color: var(--pgn-wgu-color-text-main-body);
   width: 100%;
