@@ -36,6 +36,14 @@ const BLOCKS = [
     ready: true,
     kind: "interactive",
   },
+  {
+    id: "flashcards",
+    name: "Flashcards Block",
+    status: "in-review",
+    statusLabel: "Planning",
+    desc: "A set of flip cards for recall practice. To be specified — behaviour, deck size, and progression still to define.",
+    ready: false,
+  },
 ];
 const blockById = (id) => BLOCKS.find((b) => b.id === id);
 
@@ -431,7 +439,7 @@ function renderDeferredDetail(b) {
   const inner = h("div", "stage__inner");
   const ph = h("div");
   ph.style.cssText = "min-height:220px;display:flex;align-items:center;justify-content:center;color:#aeb4ba;font-family:var(--c-mono);font-size:13px;text-align:center;";
-  ph.textContent = "Interactive Block — to be defined";
+  ph.textContent = `${b.name} — to be defined`;
   inner.appendChild(ph);
   stage.appendChild(inner);
   stageWrap.appendChild(stage);
