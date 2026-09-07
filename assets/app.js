@@ -62,6 +62,9 @@ function route() {
   // Full-width preview of the interactive block: no chrome, just the block.
   const preview = hash.match(/^\/preview\/interactive\/([\w-]+)/);
   if (preview) { renderInteractivePreview(preview[1]); return; }
+  // Full-width preview of a flashcards mockup screen (planning stage).
+  const fcPreview = hash.match(/^\/preview\/flashcards\/([\w-]+)/);
+  if (fcPreview) { renderFlashcardsPreview(fcPreview[1]); return; }
   const m = hash.match(/^\/block\/([\w-]+)/);
   if (m && blockById(m[1])) renderDetail(m[1]);
   else renderCatalog();
@@ -192,6 +195,7 @@ function renderDetail(id) {
   const b = blockById(id);
   app.replaceChildren();
   app.appendChild(topbar());
+  if (b.id === "flashcards") return renderFlashcardsDetail(b);
   if (!b.ready) return renderDeferredDetail(b);
   if (b.kind === "interactive") return renderInteractiveDetail(b);
 
@@ -456,6 +460,492 @@ function renderDeferredDetail(b) {
 
   detail.appendChild(workbench);
   app.appendChild(detail);
+}
+
+/* ============================================================================
+ * FLASHCARDS BLOCK DETAIL — content-only render (no rail, no spec panel).
+ * The stage takes the full workbench width, same shape as the Interactive
+ * block's demo mode. Toolbar mirrors Interactive: px readout, Wide preset,
+ * Preview button, drag handle. Content is the Figma Launch Screen mockup.
+ * ==========================================================================*/
+function renderFlashcardsDetail(b) {
+  const detail = h("div", "detail");
+  detail.classList.add("detail--flashcards-demo");
+  const header = h("div", "detail__header");
+  header.appendChild(backLink());
+  const titleRow = h("div", "detail__title-row");
+  titleRow.appendChild(h("h1", "detail__title", b.name));
+  titleRow.appendChild(statusBadge(b.status, b.statusLabel));
+  header.appendChild(titleRow);
+  detail.appendChild(header);
+
+  const workbench = h("div", "workbench");
+  workbench.classList.add("workbench--flashcards-demo");
+
+  // Stage — same rig as renderInteractiveDetail: px readout, Wide preset,
+  // Preview button, and the drag handle on the right edge.
+  const stageWrap = h("div", "stage-wrap");
+  const toolbar = h("div", "stage-toolbar");
+  const widthReadout = h("span", "readout");
+  widthReadout.innerHTML = 'stage <b class="mono">—</b> px';
+  const widthValue = widthReadout.querySelector("b");
+  const caption = h("p", "stage-caption", "Launch Screen — first frame the learner sees before starting the deck.");
+
+  const stagePresets = h("div", "stage-presets");
+  const wideBtn = h("button", null, "Wide");
+  wideBtn.type = "button";
+  wideBtn.addEventListener("click", () => { stage.style.width = "980px"; updateWidth(); });
+  stagePresets.appendChild(wideBtn);
+  const previewBtn = h("button", "stage-presets__preview");
+  previewBtn.type = "button";
+  previewBtn.title = "Open a full-width preview of this screen in a new tab";
+  previewBtn.innerHTML = 'Preview <span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span>';
+  previewBtn.addEventListener("click", () => { window.open("#/preview/flashcards/launch", "_blank"); });
+  stagePresets.appendChild(previewBtn);
+
+  toolbar.appendChild(widthReadout);
+  toolbar.appendChild(h("span", "stage-toolbar__spacer"));
+  toolbar.appendChild(stagePresets);
+  stageWrap.appendChild(toolbar);
+  stageWrap.appendChild(caption);
+
+  const stageFrame = h("div", "stage-frame");
+  const stage = h("div", "stage");
+  stage.style.width = "980px";                     // Wide default; expanded below
+  const stageInner = h("div", "stage__inner");
+  // In-stage screen swaps: launch → cards → outcome → (practice → outcome)*
+  // → launch (via Exit). showCards takes a deck so the same swap serves both
+  // a fresh full round and a Practice round with only the previously-missed
+  // terms; identity check against FLASHCARDS_TERMS is how we tell them apart
+  // for the caption.
+  function swap(block) {
+    stageInner.querySelectorAll(".wgu-block-flashcards").forEach((n) => n.remove());
+    stageInner.appendChild(block);
+  }
+  function showLaunch() {
+    swap(buildFlashcardsLaunch(() => showCards(FLASHCARDS_TERMS)));
+    caption.textContent = "Launch Screen — first frame the learner sees before starting the deck.";
+  }
+  function showCards(deck) {
+    swap(buildFlashcardsCards(deck, showOutcome));
+    caption.textContent = deck === FLASHCARDS_TERMS
+      ? "Default card state — front of the first card, before the learner reveals the definition."
+      : "Practice round — a fresh pass through only the cards marked as missed.";
+  }
+  function showOutcome(session) {
+    swap(buildFlashcardsOutcome(session, {
+      onExit: showLaunch,
+      onPractice: () => {
+        // Build a new deck from THIS round's missed answers (session.deck is
+        // the round's deck, so this works for both original + practice rounds).
+        const missedDeck = session.answers
+          .map((a, i) => a === "missed" ? session.deck[i] : null)
+          .filter(Boolean);
+        if (missedDeck.length) showCards(missedDeck);
+      },
+    }));
+    caption.textContent = "Outcome screen — end-of-round recap with missed terms and next-step actions.";
+  }
+  showLaunch();
+  stage.appendChild(stageInner);
+  const handle = h("div", "stage__handle");
+  handle.setAttribute("role", "separator");
+  handle.setAttribute("aria-orientation", "vertical");
+  handle.title = "Drag to resize the stage";
+  stageFrame.appendChild(stage); stageFrame.appendChild(handle);
+  stageWrap.appendChild(stageFrame);
+  workbench.appendChild(stageWrap);
+
+  // Drag-to-resize (same pointer-events pattern as the other stages).
+  let dx = 0, dw = 0;
+  const dragMin = 320;
+  const onMove = (e) => { stage.style.width = Math.max(dragMin, Math.min(2000, dw + (e.clientX - dx))) + "px"; updateWidth(); };
+  const onUp = (e) => { try { handle.releasePointerCapture(e.pointerId); } catch (_) {} window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); handle.classList.remove("is-dragging"); };
+  handle.addEventListener("pointerdown", (e) => { e.preventDefault(); dx = e.clientX; dw = stage.offsetWidth; try { handle.setPointerCapture(e.pointerId); } catch (_) {} handle.classList.add("is-dragging"); window.addEventListener("pointermove", onMove); window.addEventListener("pointerup", onUp); });
+
+  detail.appendChild(workbench);
+  app.appendChild(detail);
+
+  function updateWidth() {
+    const cs = getComputedStyle(stage);
+    widthValue.textContent = Math.round(stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+  }
+  const ro = new ResizeObserver(() => updateWidth());
+  ro.observe(stage);
+  updateWidth();
+
+  // Fit the stage to whichever is smaller: the workbench width, or the width
+  // that keeps the flashcards block (aspect 1280/832) within the viewport
+  // height. Without the height cap, the block overflows on typical browsers
+  // and forces the user to scroll to see the cards or the outcome. Recomputed
+  // on window resize so the fit follows the viewport.
+  function fitStageToViewport() {
+    const frame = stage.parentElement;
+    if (!frame) return;
+    const hStyle = getComputedStyle(handle);
+    const handleBox = handle.offsetWidth + parseFloat(hStyle.marginLeft) + parseFloat(hStyle.marginRight);
+    const widthFromFrame = frame.clientWidth - handleBox - 2;
+    const availableHeight = window.innerHeight - stageFrame.getBoundingClientRect().top - 24;
+    const widthFromHeight = availableHeight * (1280 / 832);
+    const target = Math.max(dragMin, Math.min(widthFromFrame, widthFromHeight));
+    stage.style.width = target + "px";
+    updateWidth();
+  }
+  requestAnimationFrame(fitStageToViewport);
+  window.addEventListener("resize", fitStageToViewport);
+}
+
+/* Sample deck used by the card view. The data structure supports a full deck
+ * of front/back pairs, but only the first term is rendered at this stage — the
+ * flip and progression are the next step. Progress reads "1/10" (per the
+ * Figma frame) rather than n/deck.length while the deck size is a placeholder. */
+const FLASHCARDS_TERMS = [
+  { term: "Self-esteem", definition: "The value a person places on themselves — how worthy they feel of respect, care, and success." },
+  { term: "Motivation", definition: "The internal state that drives a person to act toward a goal — from curiosity, need, or reward." },
+  { term: "Resilience", definition: "The capacity to recover from setbacks and adapt when things don't go as planned." },
+  { term: "Growth mindset", definition: "The belief that abilities can be developed through effort, feedback, and practice." },
+];
+
+/* Launch Screen mockup markup — HTML skeleton matching the Figma frame. All
+ * sizing is handled in blocks/flashcards.css via container queries so this
+ * builder stays declarative. onLaunch (optional) is wired to the "Launch
+ * Interactive" CTA so the caller can swap in the card view in-place. */
+function buildFlashcardsLaunch(onLaunch) {
+  const wrap = h("div", "wgu-block wgu-block-flashcards");
+  wrap.innerHTML = `
+    <div class="fc-launch">
+      <div class="fc-launch__left">
+        <div class="fc-launch__context">
+          <div class="fc-launch__header">
+            <span class="material-symbols-outlined fc-launch__icon" aria-hidden="true">dynamic_feed</span>
+            <span class="fc-launch__divider" aria-hidden="true"></span>
+            <p class="fc-launch__label">Flashcards</p>
+          </div>
+          <div class="fc-launch__content">
+            <h2 class="fc-launch__title">Retrieval Practice</h2>
+            <p class="fc-launch__desc"><strong>Hi! 👋</strong> Let's pause for a quick review. You'll see a term, try to remember what it means, before revealing the answer. Select whether you got it right or wrong, and practice the ones you missed.</p>
+          </div>
+        </div>
+        <button class="fc-launch__cta" type="button">Launch Interactive</button>
+      </div>
+      <div class="fc-launch__right" aria-hidden="true"></div>
+    </div>
+  `;
+  if (onLaunch) wrap.querySelector(".fc-launch__cta").addEventListener("click", onLaunch);
+  return wrap;
+}
+
+/* Default card state + deck progression. Click the front to flip (CSS 3D) to
+ * the back — term + definition + "How did you do?" + Missed it / Got it.
+ * Answering swipes the current card off (Missed = left, Got = right; the
+ * mid-point of the exit animation matches the Figma "Missed Card Animation"
+ * frame) while the next deck term appears behind it in its default front
+ * state, and the progress counter advances (1/N → 2/N → …).
+ *
+ * `deck` is the ordered list of term objects for this round — the full
+ * FLASHCARDS_TERMS on a fresh session, or a filtered subset when the user
+ * hits "Practice what you missed" on the outcome screen. It's stored on
+ * session.deck so the outcome screen looks up terms from THIS round rather
+ * than the original master list. Each answer is recorded on
+ * wrap.__fcSession.answers; the caller-supplied onDeckDone gets the session
+ * once the final card finishes exiting, and hands off to the outcome
+ * screen. */
+function buildFlashcardsCards(deck, onDeckDone) {
+  const wrap = h("div", "wgu-block wgu-block-flashcards wgu-block-flashcards--cards");
+  wrap.innerHTML = `
+    <div class="fc-cards">
+      <div class="fc-cards__topbar">
+        <div class="fc-cards__brand">
+          <span class="material-symbols-outlined fc-cards__brand-icon" aria-hidden="true">dynamic_feed</span>
+          <span class="fc-cards__brand-divider" aria-hidden="true"></span>
+          <p class="fc-cards__brand-label">Flashcards</p>
+        </div>
+        <button class="fc-cards__close" type="button" aria-label="Close">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="fc-cards__stage">
+        <div class="fc-cards__stack"></div>
+      </div>
+      <p class="fc-cards__progress">1/${deck.length}</p>
+    </div>
+  `;
+
+  const stack = wrap.querySelector(".fc-cards__stack");
+  const progress = wrap.querySelector(".fc-cards__progress");
+
+  // Session state — attached to the wrap so the outcome screen (and any
+  // downstream consumer) can read it. answers[i] is "missed" | "got" for the
+  // i-th card in THIS round's deck (which may be a filtered subset from a
+  // Practice round). session.deck is that deck, so the outcome can resolve
+  // missed indices back to their term objects without knowing about the
+  // master list.
+  const session = { index: 0, answers: [], deck };
+  wrap.__fcSession = session;
+
+  const EXIT_MS = 850;
+
+  // Slots: [back, middle, front]. Every card in the deck is a full card
+  // (front + back faces + handlers); its position, size, colour, and
+  // interactivity are gated by the slot class the CSS applies. On each answer
+  // the front-slot card exits, the two behind promote up a slot, and a fresh
+  // card enters at the back — real "deck consumption" instead of the static
+  // decorative layers we had before. Entries stay null when the deck runs
+  // shorter than 3 remaining cards (last two answers of any round).
+  const cards = [null, null, null];
+
+  function setSlot(card, slot) {
+    card.classList.remove(
+      "fc-cards__card--slot-back",
+      "fc-cards__card--slot-middle",
+      "fc-cards__card--slot-front"
+    );
+    if (slot) {
+      card.classList.add(`fc-cards__card--slot-${slot}`);
+      card.setAttribute("tabindex", slot === "front" ? "0" : "-1");
+    } else {
+      card.removeAttribute("tabindex");
+    }
+  }
+
+  function makeCard(term) {
+    const card = h("div", "fc-cards__card");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", "Reveal the definition");
+    card.innerHTML = `
+      <div class="fc-cards__card-inner">
+        <div class="fc-cards__card-face fc-cards__card-face--front">
+          <span class="material-symbols-outlined fc-cards__flip-icon" aria-hidden="true">360</span>
+          <p class="fc-cards__term">${term.term}</p>
+          <div class="fc-cards__reveal">
+            <span class="material-symbols-outlined fc-cards__reveal-icon" aria-hidden="true">mouse</span>
+            <span class="fc-cards__reveal-text">Click to reveal</span>
+          </div>
+        </div>
+        <div class="fc-cards__card-face fc-cards__card-face--back" aria-hidden="true">
+          <span class="material-symbols-outlined fc-cards__flip-icon" aria-hidden="true">360</span>
+          <div class="fc-cards__back-body">
+            <h3 class="fc-cards__back-term">${term.term}</h3>
+            <p class="fc-cards__back-definition">${term.definition}</p>
+          </div>
+          <p class="fc-cards__back-prompt">How did you do?</p>
+          <div class="fc-cards__actions">
+            <button class="fc-cards__action fc-cards__action--missed" type="button" aria-label="Missed it"></button>
+            <button class="fc-cards__action fc-cards__action--got" type="button" aria-label="Got it"></button>
+            <span class="fc-cards__action-label fc-cards__action-label--missed" aria-hidden="true">
+              <span class="material-symbols-outlined">arrow_back</span>
+              <span>Missed it</span>
+            </span>
+            <span class="fc-cards__action-label fc-cards__action-label--got" aria-hidden="true">
+              <span>Got it</span>
+              <span class="material-symbols-outlined">arrow_forward</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const front = card.querySelector(".fc-cards__card-face--front");
+    const back = card.querySelector(".fc-cards__card-face--back");
+
+    const flip = () => {
+      if (card.classList.contains("is-flipped")) return;
+      card.classList.add("is-flipped");
+      card.setAttribute("tabindex", "-1");
+      card.setAttribute("aria-label", "Definition revealed — choose Missed it or Got it.");
+      front.setAttribute("aria-hidden", "true");
+      back.setAttribute("aria-hidden", "false");
+    };
+    card.addEventListener("click", flip);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }
+    });
+    card.querySelectorAll(".fc-cards__action").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        // Only the current front-slot card answers. Non-front cards already
+        // have pointer-events: none via CSS, but this is a belt-and-suspenders
+        // guard so a still-attached exiting card can't answer a second time.
+        if (card !== cards[2]) return;
+        if (card.classList.contains("is-exiting")) return;
+        const direction = btn.classList.contains("fc-cards__action--missed") ? "missed" : "got";
+        answerCurrent(direction);
+      });
+    });
+
+    return card;
+  }
+
+  function answerCurrent(direction) {
+    const exitingCard = cards[2];
+    if (!exitingCard) return;
+
+    session.answers[session.index] = direction;
+    session.index += 1;
+
+    // Fire the exit animation on the current front card. It keeps its
+    // slot-front dimensions (width/height/top/bg) so nothing shifts under it
+    // — the exit animation only touches transform + opacity via keyframes.
+    exitingCard.classList.add("is-exiting");
+    exitingCard.classList.add(direction === "missed" ? "fc-cards__card--exit-left" : "fc-cards__card--exit-right");
+    setTimeout(() => exitingCard.remove(), EXIT_MS);
+
+    // Promote the two layers behind up a slot. CSS transitions on width,
+    // height, top and background-color take care of the visual growth; the
+    // inner content fades in as slot-middle → slot-front removes its opacity
+    // gate.
+    const newFront = cards[1];
+    const newMiddle = cards[0];
+    if (newFront) setSlot(newFront, "front");
+    if (newMiddle) setSlot(newMiddle, "middle");
+    cards[2] = newFront;
+    cards[1] = newMiddle;
+    cards[0] = null;
+
+    // Add a fresh card at the back if the deck has one that far ahead.
+    // (session.index has already been bumped, so +2 is the term two ahead
+    // of the new front.)
+    const newBackTermIndex = session.index + 2;
+    if (newBackTermIndex < deck.length) {
+      const newBack = makeCard(deck[newBackTermIndex]);
+      setSlot(newBack, "back");
+      stack.appendChild(newBack);
+      cards[0] = newBack;
+    }
+
+    if (cards[2]) {
+      progress.textContent = `${session.index + 1}/${deck.length}`;
+    } else if (onDeckDone) {
+      // No card left in the front slot — this was the last answer of the
+      // round. Hand off to the outcome screen once the exit finishes.
+      setTimeout(() => onDeckDone(session), EXIT_MS);
+    }
+  }
+
+  // Initial mount: fill up to three slots with the first three terms.
+  // slotIdx 2 = front (term[index]), 1 = middle (term[index+1]),
+  // 0 = back (term[index+2]). Any that go past deck.length stay null.
+  for (let slotIdx = 2; slotIdx >= 0; slotIdx--) {
+    const termIndex = session.index + (2 - slotIdx);
+    if (termIndex < deck.length) {
+      const card = makeCard(deck[termIndex]);
+      setSlot(card, ["back", "middle", "front"][slotIdx]);
+      stack.appendChild(card);
+      cards[slotIdx] = card;
+    }
+  }
+  return wrap;
+}
+
+/* Outcome screen — end-of-deck summary for the ROUND that just finished.
+ * Reads session.answers + session.deck to compute got/missed counts and to
+ * resolve missed indices back to term objects (so a Practice round shows the
+ * subset it was actually run against, not the master list). Exposes two
+ * actions: Practice what you missed (onPractice — the caller wires this to a
+ * fresh round with only the missed terms) and Exit (onExit — typically the
+ * launch-screen swap). When there are no misses, the missed section, the
+ * motivational note, and the Practice button all drop out. */
+function buildFlashcardsOutcome(session, { onExit, onPractice = () => {} } = {}) {
+  const deck = (session && session.deck) ? session.deck : FLASHCARDS_TERMS;
+  const answers = (session && session.answers) ? session.answers : [];
+  const total = deck.length;
+  const missedIndices = answers.reduce((acc, a, i) => { if (a === "missed") acc.push(i); return acc; }, []);
+  const gotCount = answers.filter((a) => a === "got").length;
+  const missedCount = missedIndices.length;
+
+  const missedItemsHtml = missedIndices.map((i) => {
+    const t = deck[i];
+    return `
+      <div class="fc-outcome__missed-item">
+        <p class="fc-outcome__missed-term">${t.term}</p>
+        <p class="fc-outcome__missed-def">${t.definition}</p>
+      </div>`;
+  }).join("");
+
+  const missedSectionHtml = missedCount > 0 ? `
+    <div class="fc-outcome__missed">
+      <p class="fc-outcome__missed-heading">Here are the ones you marked as missed:</p>
+      <div class="fc-outcome__missed-list">${missedItemsHtml}</div>
+    </div>` : "";
+
+  const noteHtml = missedCount > 0
+    ? `<p class="fc-outcome__note">Another quick pass in those ${missedCount} is all it takes</p>`
+    : "";
+
+  // Practice makes no sense with zero misses — hide the button entirely so
+  // it can't leave the user on a dead-end action.
+  const practiceHtml = missedCount > 0 ? `
+    <button type="button" class="fc-outcome__practice">
+      <span>Practice what you missed</span>
+      <span class="material-symbols-outlined" aria-hidden="true">replay</span>
+    </button>` : "";
+
+  const wrap = h("div", "wgu-block wgu-block-flashcards wgu-block-flashcards--outcome");
+  wrap.innerHTML = `
+    <div class="fc-outcome">
+      <div class="fc-cards__topbar">
+        <div class="fc-cards__brand">
+          <span class="material-symbols-outlined fc-cards__brand-icon" aria-hidden="true">dynamic_feed</span>
+          <span class="fc-cards__brand-divider" aria-hidden="true"></span>
+          <p class="fc-cards__brand-label">Flashcards</p>
+        </div>
+        <button class="fc-cards__close" type="button" aria-label="Close">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="fc-outcome__hero">
+        <span class="material-symbols-outlined fc-outcome__hero-icon" aria-hidden="true">auto_graph</span>
+        <p class="fc-outcome__score">${gotCount}/${total}</p>
+        <div class="fc-outcome__hero-text">
+          <h2 class="fc-outcome__headline">Well done! You recalled ${gotCount} out of ${total} from memory</h2>
+          ${noteHtml}
+        </div>
+        ${practiceHtml}
+      </div>
+      ${missedSectionHtml}
+      <button type="button" class="fc-outcome__exit">
+        <span>Exit</span>
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </div>
+  `;
+
+  const practiceBtn = wrap.querySelector(".fc-outcome__practice");
+  if (practiceBtn) practiceBtn.addEventListener("click", onPractice);
+  wrap.querySelector(".fc-outcome__exit").addEventListener("click", () => { if (onExit) onExit(); });
+  return wrap;
+}
+
+/* Full-width preview of a flashcards mockup screen — no catalog chrome, just
+ * the block filling the browser. Mirrors renderInteractivePreview but for the
+ * planning-stage mockup screens. Currently only "launch" is defined. */
+function renderFlashcardsPreview(screen) {
+  document.body.classList.add("is-interactive-preview");   // reuse preview shell styles
+  app.replaceChildren();
+  app.classList.add("preview-mode");
+  const stage = h("div", "preview-stage");
+  // Same launch → cards → outcome → launch flow as the detail view, in-place
+  // so the preview exercises the whole interaction without a page or URL
+  // change. `screen` is currently ignored — the flow always starts at launch.
+  function swap(block) {
+    stage.querySelectorAll(".wgu-block-flashcards").forEach((n) => n.remove());
+    stage.appendChild(block);
+  }
+  function showLaunch() { swap(buildFlashcardsLaunch(() => showCards(FLASHCARDS_TERMS))); }
+  function showCards(deck) { swap(buildFlashcardsCards(deck, showOutcome)); }
+  function showOutcome(session) {
+    swap(buildFlashcardsOutcome(session, {
+      onExit: showLaunch,
+      onPractice: () => {
+        const missedDeck = session.answers
+          .map((a, i) => a === "missed" ? session.deck[i] : null)
+          .filter(Boolean);
+        if (missedDeck.length) showCards(missedDeck);
+      },
+    }));
+  }
+  showLaunch();
+  app.appendChild(stage);
 }
 
 /* ============================================================================
