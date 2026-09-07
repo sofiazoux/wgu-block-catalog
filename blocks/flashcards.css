@@ -1,0 +1,980 @@
+/* ============================================================================
+ * FLASHCARDS BLOCK — Launch Screen mockup (planning stage).
+ *
+ * A shareable frame for the block while the interaction is still being
+ * specified. Mirrors the Figma "Launch Screen" (1280×831 navy chrome around a
+ * 1008×559 two-column card). Everything scales via container queries against
+ * the launch card so it stays proportional as the catalog stage is resized.
+ *
+ * Scoped under .wgu-block-flashcards / .fc-launch — nothing leaks into the
+ * rest of the catalog chrome.
+ * ==========================================================================*/
+
+/* Outer navy chrome — hugs the card + Figma's 10.625% (136/1280) padding on
+ * all sides (mirrors .wgu-block-interactive__viewport). No aspect-ratio here
+ * so the navy height auto-derives from padding + card height; flex centres
+ * the card as a safety net. pointer-events: none — the mockup is a static
+ * preview of the block, not the working block, so nothing inside is
+ * clickable. */
+.wgu-block-flashcards {
+  width: 100%;
+  padding: clamp(16px, 10.625%, 136px);
+  background: #223e5d;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* --- Detail chrome: mirror Interactive DEMO_MODE. Flashcards is content-only
+ * for now (no configuration or rules), so it renders like a finished block:
+ * stage fills the workbench, no rail or spec panel. */
+.workbench--flashcards-demo,
+.workbench--flashcards-demo.is-spec-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workbench--flashcards-demo .stage {
+  max-width: 100%;
+  min-width: 320px;
+}
+body:has(.detail--flashcards-demo) .topbar {
+  position: static;
+}
+
+/* Drop the stage's white frame so the block's navy canvas reaches the stage
+ * edges — same trick as .wgu-block-interactive. */
+.stage:has(.wgu-block-flashcards) {
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+/* ---- Preview mode: the block fills the whole viewport (100vw × 100vh) with
+ * no page scroll and no letterbox. Aspect ratios are dropped on the outer
+ * block; the INTERIOR card / stage sizes itself to the smaller of a
+ * viewport-width cap and a viewport-height-derived width, so it always fits
+ * in both dimensions while keeping its own proportions. */
+body.is-interactive-preview .wgu-block-flashcards {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  aspect-ratio: auto;
+}
+
+/* Launch: inner card (aspect 1008/559) flex-centred inside the navy block;
+ * sized by min(90vw, height-derived width). */
+body.is-interactive-preview .fc-launch {
+  width: min(90vw, calc(90vh * 1008 / 559));
+  height: auto;
+  aspect-ratio: 1008 / 559;
+}
+
+/* Cards: stack (aspect 466.76/591.52) sized by min(45vw, height-derived).
+ * The 220px in the height calc reserves room for the topbar + progress +
+ * outer padding at max clamp values, so the stack never displaces them. */
+body.is-interactive-preview .fc-cards__stack {
+  width: min(45vw, calc((100vh - 220px) * 466.76 / 591.52));
+}
+
+/* Outcome: preserve the 1280×832 design canvas via aspect-ratio on the
+ * inner .fc-outcome, centred in the viewport. Container-type moves down to
+ * .fc-outcome so its cqi-positioned children (hero, missed, exit) resolve
+ * against the canvas width instead of the full viewport. */
+body.is-interactive-preview .wgu-block-flashcards--outcome {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: normal;
+}
+body.is-interactive-preview .fc-outcome {
+  width: min(100vw, calc(100vh * 1280 / 832));
+  height: auto;
+  aspect-ratio: 1280 / 832;
+  container-type: inline-size;
+}
+
+/* The card is the container: cqi units below resolve against its width so
+ * text + spacing scale with the stage. aspect-ratio 1008/559 gives a
+ * definite height (matches Figma); grid-template-rows: 1fr makes both
+ * columns fill that height so the CTA anchors to the bottom of the left
+ * column instead of overflowing and being clipped. */
+.fc-launch {
+  width: 100%;
+  aspect-ratio: 1008 / 559;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: 62% 38%;
+  grid-template-rows: 1fr;
+  border-radius: clamp(12px, 2.38cqi, 24px);
+  overflow: hidden;
+  background: #e9f6f5;
+  font-family: 'Lato', system-ui, sans-serif;
+}
+
+.fc-launch__left {
+  padding: clamp(16px, 4.76cqi, 48px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(12px, 2.4cqi, 24px);
+  min-height: 0;
+}
+
+.fc-launch__context {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 4.76cqi, 48px);
+  width: 100%;
+}
+
+/* Pill header — asymmetric radii mirror Figma (bottom-left almost square). */
+.fc-launch__header {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.59cqi, 16px);
+  padding: clamp(10px, 1.59cqi, 16px);
+  border: 1px solid #8cc9d1;
+  background: #e0f2f2;
+  border-radius: clamp(10px, 1.59cqi, 16px)
+                 clamp(10px, 1.59cqi, 16px)
+                 clamp(10px, 1.59cqi, 16px)
+                 clamp(3px, 0.4cqi, 4px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fc-launch__icon.material-symbols-outlined {
+  font-size: clamp(28px, 4.76cqi, 48px);
+  line-height: 1;
+  color: #2f808e;
+}
+
+.fc-launch__divider {
+  width: 1px;
+  height: clamp(28px, 4.76cqi, 48px);
+  background: #8cc9d1;
+  flex: none;
+}
+
+.fc-launch__label {
+  margin: 0;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(13px, 1.78cqi, 18px);
+  color: #2f808e;
+}
+
+.fc-launch__content {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.8cqi, 8px);
+  width: 100%;
+}
+
+.fc-launch__title {
+  margin: 0;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(15px, 1.98cqi, 20px);
+  line-height: 1.7;   /* 34/20, per Figma H5 spec */
+  color: #0050aa;
+}
+
+.fc-launch__desc {
+  margin: 0;
+  font-size: clamp(13px, 1.78cqi, 18px);
+  line-height: 1.55;
+  color: #4d4d4d;
+}
+.fc-launch__desc strong { font-weight: 700; }
+
+.fc-launch__cta {
+  align-self: flex-end;
+  flex-shrink: 0;   /* never collapse — keeps the CTA visible at every width */
+  background: #4d75c5;
+  color: #fff;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(12px, 1.59cqi, 16px);
+  line-height: 1.5;
+  padding: clamp(8px, 1.2cqi, 12px) clamp(18px, 3.2cqi, 32px);
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;   /* opt back in — parent block sets pointer-events: none */
+  white-space: nowrap;
+}
+.fc-launch__cta:hover { background: #4269b8; }
+
+/* Right column — decorative crowd image. Sizing + offsets match Figma
+ * exactly: width 176.73% of the column, positioned so the visible crop
+ * frames the cyan silhouette. Background-position % is derived from Figma's
+ * left/top offsets (see calc in the design context). */
+.fc-launch__right {
+  background: url('../assets/flashcards-cover.png') 77% 73% / 176.73% no-repeat #fff;
+}
+
+/* ============================================================================
+ * CARD VIEW — "Default card state" (post-launch). Matches Figma frame
+ * 1280×832: seafoam background, top bar (Flashcards brand + close), three
+ * stacked cards with the front showing the term + reveal affordance, and a
+ * progress counter below. Card flip is intentionally not wired yet.
+ * ==========================================================================*/
+
+/* Reset the launch-mode navy chrome; the card view IS the light seafoam frame
+ * itself. Aspect ratio matches Figma so the stage doesn't jump between screens
+ * (launch's outer size is 1280×~831, virtually identical). */
+.wgu-block-flashcards--cards {
+  padding: 0;
+  background: #e9f6f5;
+  aspect-ratio: 1280 / 832;
+  display: block;
+  container-type: inline-size;
+  pointer-events: auto;
+}
+
+.fc-cards {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: clamp(18px, 3.75cqi, 48px) clamp(14px, 2.5cqi, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1cqi, 16px);
+  font-family: 'Lato', system-ui, sans-serif;
+}
+
+/* Top bar — dynamic_feed icon + thin divider + label on the left, close on the
+ * right. Same rhythm as the Interactive block header. */
+.fc-cards__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.fc-cards__brand {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.25cqi, 16px);
+}
+.fc-cards__brand-icon.material-symbols-outlined {
+  font-size: clamp(28px, 3.75cqi, 48px);
+  line-height: 1;
+  color: #2f808e;
+}
+.fc-cards__brand-divider {
+  width: 1px;
+  height: clamp(28px, 3.75cqi, 48px);
+  background: #8cc9d1;
+  flex-shrink: 0;
+}
+.fc-cards__brand-label {
+  margin: 0;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(13px, 1.4cqi, 18px);
+  line-height: 1.33;
+  color: #2f808e;
+}
+.fc-cards__close {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: #223e5d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.fc-cards__close .material-symbols-outlined {
+  font-size: clamp(20px, 2.5cqi, 32px);
+  line-height: 1;
+}
+
+/* Card area — takes the flex fill, centres the stack. */
+.fc-cards__stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Stack container is sized to the front card; the two back cards peek above
+ * it via absolute positioning with negative top offsets. Percentages below are
+ * all derived from Figma pixels (front card = 466.759 × 591.524). */
+.fc-cards__stack {
+  position: relative;
+  width: clamp(220px, 36.47cqi, 560px);
+  aspect-ratio: 466.759 / 591.524;
+}
+
+/* --- Slot system for real layer promotion ------------------------------- *
+ * Every card in the deck is a full card (front + back faces + handlers), not
+ * a decorative rectangle. At any moment up to three cards occupy the stack in
+ * three slots — back, middle, front. On each answer, the front slot exits,
+ * middle promotes to front, back promotes to middle, and a fresh card enters
+ * at the back. Position/size/background are driven by the slot class and the
+ * CSS transition makes the promotion smooth. Only the front slot is
+ * interactive and only its content is visible (opacity gated below). */
+.fc-cards__card {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 5.89%;
+  box-shadow: 0 1.94% 3.4% rgba(140, 201, 209, 0.3);
+  background: #fff;
+  perspective: 1400px;
+  outline: none;
+  box-sizing: border-box;
+  cursor: default;
+  transition:
+    width 850ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 850ms cubic-bezier(0.4, 0, 0.2, 1),
+    top 850ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 850ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fc-cards__card--slot-back {
+  width: 79.00%;    /* 368.771 / 466.759 */
+  height: 78.69%;   /* 465.424 / 591.524 */
+  top: -6.59%;      /* (0 - 38.98) / 591.524 */
+  z-index: 0;
+  background: #f2faf9;
+  pointer-events: none;
+}
+.fc-cards__card--slot-middle {
+  width: 92.78%;    /* 433.042 / 466.759 */
+  height: 92.44%;   /* 546.815 / 591.524 */
+  top: -3.30%;      /* (19.49 - 38.98) / 591.524 */
+  z-index: 1;
+  background: #f8fcfc;
+  pointer-events: none;
+}
+.fc-cards__card--slot-front {
+  width: 100%;
+  height: 100%;
+  top: 0;
+  z-index: 2;
+  /* Transparent so the outer doesn't peek through when the inner is edge-on
+   * during the flip. The face provides the visible white surface and rotates
+   * with the flip — no "ghost card" behind on the last-card flip. */
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.fc-cards__card--slot-front.is-flipped { cursor: default; }
+.fc-cards__card--slot-front:focus-visible {
+  outline: 3px solid #3376c3;
+  outline-offset: 4px;
+}
+/* The exiting card keeps its slot-front dimensions but z-jumps above the
+ * promoting siblings and stops receiving pointer events. */
+.fc-cards__card--exit-left,
+.fc-cards__card--exit-right {
+  cursor: default;
+}
+
+.fc-cards__card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition:
+    transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1),
+    opacity 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Content only shows in the front slot — non-front cards look like tinted
+ * blank shapes (their card bg provides the tint). When a card promotes to
+ * front, the inner fades in over 500ms. */
+.fc-cards__card--slot-back .fc-cards__card-inner,
+.fc-cards__card--slot-middle .fc-cards__card-inner {
+  opacity: 0;
+}
+.fc-cards__card.is-flipped .fc-cards__card-inner {
+  transform: rotateY(180deg);
+}
+/* Belt-and-suspenders: some browsers don't fully honour backface-visibility
+ * when a face has overflow: hidden inside preserve-3d, so the front-face 360
+ * icon can bleed through — appearing mirrored on the top-left of the back.
+ * Hide the front once the flip is past edge-on (0.3s = halfway through the
+ * 0.6s rotation, when the face is invisible anyway). */
+.fc-cards__card.is-flipped .fc-cards__card-face--front {
+  visibility: hidden;
+  transition: visibility 0s linear 0.3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fc-cards__card-inner { transition: none; }
+  .fc-cards__card.is-flipped .fc-cards__card-face--front { transition: none; }
+}
+
+.fc-cards__card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: #fff;
+  border-radius: 5.89%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.fc-cards__card-face--front {
+  padding: 7.86%;    /* 36.684 / 466.759 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.fc-cards__card-face--back {
+  transform: rotateY(180deg);
+  /* Grid with a fixed-height strip at the bottom, prompt sized to content,
+   * and the body absorbing the rest. Mirrors Figma's rigid 93px action bar. */
+  display: grid;
+  grid-template-rows: 1fr auto 15.72%;   /* strip = 93 / 591.524 */
+}
+
+/* 360 flip-hint icon — top-right corner, faded so it reads as a secondary cue. */
+.fc-cards__flip-icon.material-symbols-outlined {
+  position: absolute;
+  top: 4.85%;        /* 28.66 / 591.524 */
+  right: 3.49%;      /* (466.759 - 422.94 - 27.513) / 466.759 */
+  font-size: clamp(16px, 2.15cqi, 32px);
+  color: #223e5d;
+  opacity: 0.35;
+  line-height: 1;
+  z-index: 1;
+}
+
+/* Term — centred both axes. Card uses flex center; overriding with 0-inset
+ * margin so it sits in the exact middle regardless of the reveal row below. */
+.fc-cards__term {
+  margin: 0;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(22px, 3.045cqi, 48px);
+  line-height: 1.41;   /* 55.025 / 38.976 */
+  color: #0050aa;
+}
+
+/* Reveal row — anchored to card bottom (5.44% of front card height). */
+.fc-cards__reveal {
+  position: absolute;
+  left: 50%;
+  bottom: 5.44%;     /* (591.524 - 531.34 - 28) / 591.524 */
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.72cqi, 12px);
+  color: #0050aa;
+}
+.fc-cards__reveal-icon.material-symbols-outlined {
+  font-size: clamp(16px, 2.15cqi, 32px);
+  line-height: 1;
+  color: #0050aa;
+}
+.fc-cards__reveal-text {
+  font-family: 'Lato', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(13px, 1.43cqi, 22px);
+  line-height: 1.5;
+}
+
+/* Progress counter — under the card, brand navy, Sora bold. */
+.fc-cards__progress {
+  margin: 0;
+  flex-shrink: 0;
+  text-align: center;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(14px, 1.56cqi, 24px);
+  line-height: 1.7;   /* 34 / 20 */
+  color: #0050aa;
+}
+
+/* ---- Back face — term (H4) + definition (Body 20), left-aligned in a body
+ * area that vertically centres them; prompt sits between body and the strip. */
+.fc-cards__back-body {
+  min-height: 0;
+  padding: 0 6.86%;   /* 32 / 466.759 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.52%;         /* 9 / 591.524 */
+  text-align: left;
+  color: #0050aa;
+}
+.fc-cards__back-term {
+  margin: 0;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(16px, 1.875cqi, 32px);   /* 24 / 1280 */
+  line-height: 1.58;                        /* 38 / 24 */
+  color: inherit;
+}
+.fc-cards__back-definition {
+  margin: 0;
+  font-family: 'Lato', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(14px, 1.5625cqi, 26px);  /* 20 / 1280 */
+  line-height: 1.6;                         /* 32 / 20 */
+  color: inherit;
+}
+.fc-cards__back-prompt {
+  margin: 0 0 clamp(6px, 1.2cqi, 20px);
+  text-align: center;
+  font-family: 'Lato', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(13px, 1.43cqi, 22px);
+  line-height: 1.5;
+  color: #0050aa;
+}
+
+/* Actions strip — 93 / 591.524 = 15.72% of card height. Two <button> children
+ * split 50/50 via flex-basis. Text sits in two absolutely-positioned overlays
+ * anchored to the STRIP (left: 25% / 75%), so it stays in place when a button
+ * expands. Overlays are pointer-events: none so clicks pass through. */
+.fc-cards__actions {
+  position: relative;
+  display: flex;
+  border-top: 1px solid #d6d9df;
+  overflow: hidden;
+}
+/* Divider — absolute at 50% so button flex resizes don't drag it along.
+ * Fades on any hover of the strip (either half occupies the whole width). */
+.fc-cards__actions::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #d6d9df;
+  z-index: 3;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.fc-cards__actions:hover::before { opacity: 0; }
+
+/* Buttons use absolute positioning (left/right) instead of flex so the losing
+ * half can slide off the strip on hover — "as if pushed". Both animations
+ * are transform-based (GPU-composited) for a solid framerate: the winner
+ * scaleX(2)-grows from its outer edge, the loser translateX-slides off. */
+.fc-cards__action {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 0;
+  padding: 0;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    transform 350ms cubic-bezier(0.32, 0, 0.24, 1),
+    background-color 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fc-cards__action--missed { left: 0; right: 50%; transform-origin: left center; }
+.fc-cards__action--got    { left: 50%; right: 0; transform-origin: right center; }
+.fc-cards__action:focus-visible {
+  outline: 2px solid #3376c3;
+  outline-offset: -3px;
+}
+
+.fc-cards__action-label {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.7cqi, 12px);   /* 9 / 1280 */
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+  font-family: 'Lato', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(13px, 1.4cqi, 22px);   /* 18 / 1280 */
+  line-height: 1.55;                       /* 28 / 18 */
+  transition:
+    color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 350ms cubic-bezier(0.32, 0, 0.24, 1);
+}
+.fc-cards__action-label .material-symbols-outlined {
+  font-size: clamp(16px, 1.875cqi, 32px);  /* 24 / 1280 */
+  line-height: 1;
+}
+.fc-cards__action-label--missed { left: 25%; color: #db493d; }
+.fc-cards__action-label--got    { left: 75%; color: #149418; }
+
+/* Hover on a half: the hovered button scaleX(2)-grows into the strip while
+ * the sibling slides off (transform: translateX ±100% of its own width). The
+ * winner's label stays anchored at 25% / 75% of the strip and turns white;
+ * the loser's label fades and slides a nudge in the push direction so it
+ * reads as travelling with the departing button. */
+.fc-cards__actions:has(.fc-cards__action--missed:hover) .fc-cards__action--missed {
+  transform: scaleX(2);
+  background-color: #db493d;
+}
+.fc-cards__actions:has(.fc-cards__action--missed:hover) .fc-cards__action--got {
+  transform: translateX(100%);
+}
+.fc-cards__actions:has(.fc-cards__action--missed:hover) .fc-cards__action-label--missed {
+  color: #fff;
+}
+.fc-cards__actions:has(.fc-cards__action--missed:hover) .fc-cards__action-label--got {
+  opacity: 0;
+  transform: translate(-50%, -50%) translateX(60%);
+}
+
+.fc-cards__actions:has(.fc-cards__action--got:hover) .fc-cards__action--got {
+  transform: scaleX(2);
+  background-color: #149418;
+}
+.fc-cards__actions:has(.fc-cards__action--got:hover) .fc-cards__action--missed {
+  transform: translateX(-100%);
+}
+.fc-cards__actions:has(.fc-cards__action--got:hover) .fc-cards__action-label--got {
+  color: #fff;
+}
+.fc-cards__actions:has(.fc-cards__action--got:hover) .fc-cards__action-label--missed {
+  opacity: 0;
+  transform: translate(-50%, -50%) translateX(-60%);
+}
+
+/* ============================================================================
+ * DECK PROGRESSION — swipe out on answer, next card slides underneath.
+ *
+ * Three keyframes only, so the fall is a SINGLE continuous segment (no
+ * intermediate stops to read as separate "steps"):
+ *   0%   at rest
+ *   22%  peak of the lift — up ~10%, tilted ~4°
+ *   100% off-stage, ~34° tilt, opacity 0
+ *
+ * Per-keyframe easing keeps velocity continuous at the pivot:
+ *   0 → 22%   ends with slope 0 (decelerates to a still peak)
+ *   22 → 100% starts with slope 0 (accelerates out of the peak, exits with
+ *             moderate velocity so it feels thrown, not placed)
+ * will-change promotes the card to its own GPU layer for a solid framerate.
+ * ==========================================================================*/
+/* translateX(-50%) prefix carries the base horizontal centring through every
+ * frame — otherwise the card would snap 50% to the right at animation start. */
+@keyframes fc-swipe-out-left {
+  0% {
+    transform: translateX(-50%);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.34, 0, 0.4, 1);
+  }
+  22% {
+    transform: translateX(-50%) translate(-3%, -10%) rotate(-4deg);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.9);
+  }
+  100% { transform: translateX(-50%) translate(-185%, 90%) rotate(-34deg); opacity: 0; }
+}
+@keyframes fc-swipe-out-right {
+  0% {
+    transform: translateX(-50%);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.34, 0, 0.4, 1);
+  }
+  22% {
+    transform: translateX(-50%) translate(3%, -10%) rotate(4deg);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.9);
+  }
+  100% { transform: translateX(-50%) translate(185%, 90%) rotate(34deg); opacity: 0; }
+}
+
+.fc-cards__card--exit-left,
+.fc-cards__card--exit-right {
+  animation-duration: 850ms;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+  z-index: 3;             /* stays above the incoming card during the swipe */
+  will-change: transform, opacity;
+}
+.fc-cards__card--exit-left  { animation-name: fc-swipe-out-left; }
+.fc-cards__card--exit-right { animation-name: fc-swipe-out-right; }
+
+/* Freeze the chosen action in its pressed state (red/green, expanded to full
+ * width, text white, divider hidden) for the whole exit — otherwise the
+ * hover strip snaps back to neutral the moment the pointer leaves. Mirrors
+ * the Figma exit frame where "Missed it" is still red as the card leaves. */
+.fc-cards__card--exit-left .fc-cards__action--missed {
+  transform: scaleX(2);
+  background-color: #db493d;
+}
+.fc-cards__card--exit-left .fc-cards__action--got {
+  transform: translateX(100%);
+}
+.fc-cards__card--exit-left .fc-cards__action-label--missed { color: #fff; }
+.fc-cards__card--exit-left .fc-cards__action-label--got {
+  opacity: 0;
+  transform: translate(-50%, -50%) translateX(60%);
+}
+.fc-cards__card--exit-left .fc-cards__actions::before { opacity: 0; }
+
+.fc-cards__card--exit-right .fc-cards__action--got {
+  transform: scaleX(2);
+  background-color: #149418;
+}
+.fc-cards__card--exit-right .fc-cards__action--missed {
+  transform: translateX(-100%);
+}
+.fc-cards__card--exit-right .fc-cards__action-label--got { color: #fff; }
+.fc-cards__card--exit-right .fc-cards__action-label--missed {
+  opacity: 0;
+  transform: translate(-50%, -50%) translateX(-60%);
+}
+.fc-cards__card--exit-right .fc-cards__actions::before { opacity: 0; }
+
+
+/* Reduced motion: skip the throw, just cross-fade out. */
+@keyframes fc-fade-out { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .fc-cards__card--exit-left,
+  .fc-cards__card--exit-right {
+    animation: fc-fade-out 200ms linear forwards;
+  }
+}
+
+/* ============================================================================
+ * OUTCOME SCREEN — end-of-deck recap. Same 1280×832 seafoam frame as the
+ * cards view so the stage size doesn't jump on the hand-off. Two-column
+ * layout matching Figma: hero (score + headline + note + practice) on the
+ * left, missed-terms list on the right, Exit anchored bottom-right. All
+ * positions in cqi so the layout stays proportional as the stage resizes.
+ * ==========================================================================*/
+.wgu-block-flashcards--outcome {
+  padding: 0;
+  background: #e9f6f5;
+  aspect-ratio: 1280 / 832;
+  display: block;
+  container-type: inline-size;
+  pointer-events: auto;
+}
+
+.fc-outcome {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  font-family: 'Lato', system-ui, sans-serif;
+}
+
+/* Top bar reuses .fc-cards__topbar for consistency with the card view — same
+ * icon, divider, label, and close on the right. Positioned absolutely so it
+ * sits at the top regardless of the two-column layout below. */
+.fc-outcome > .fc-cards__topbar {
+  position: absolute;
+  top: clamp(18px, 3.75cqi, 48px);
+  left: clamp(14px, 2.5cqi, 32px);
+  right: clamp(14px, 2.5cqi, 32px);
+}
+
+/* Hero — left column. Icon, big score, headline (H3), motivational note,
+ * outlined Practice button. Percentages from Figma: hero at x=136 (10.63%),
+ * y=197.64 (15.44%), width 384 (30%). */
+.fc-outcome__hero {
+  position: absolute;
+  top: 15.44cqi;
+  left: 10.63cqi;
+  width: 30cqi;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(12px, 1.875cqi, 30px);   /* 24 / 1280 */
+  color: #0050aa;
+}
+
+.fc-outcome__hero-icon.material-symbols-outlined {
+  font-size: clamp(36px, 5.7cqi, 90px);   /* 73 / 1280 */
+  color: #3b79c0;
+  line-height: 1;
+}
+
+.fc-outcome__score {
+  margin: 0;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(30px, 4.69cqi, 74px);   /* 60 / 1280 */
+  line-height: 1.33;                        /* 80 / 60 */
+}
+
+.fc-outcome__hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.625cqi, 10px);   /* 8 / 1280 */
+  width: 100%;
+}
+
+.fc-outcome__headline {
+  margin: 0;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(16px, 2.34cqi, 38px);   /* 30 / 1280 */
+  line-height: 1.47;                        /* 44 / 30 */
+}
+
+.fc-outcome__note {
+  margin: 0;
+  font-family: 'Lato', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(13px, 1.56cqi, 26px);   /* 20 / 1280 */
+  line-height: 1.6;                         /* 32 / 20 */
+}
+
+/* Outlined pill button, same shape as Exit but transparent bg + blue text. */
+.fc-outcome__practice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 0.625cqi, 12px);
+  min-width: clamp(160px, 15.6cqi, 250px);
+  padding: clamp(8px, 0.94cqi, 16px) clamp(18px, 2.5cqi, 40px);
+  background: transparent;
+  border: 2px solid #3376c3;
+  color: #3376c3;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(13px, 1.25cqi, 20px);   /* 16 / 1280 */
+  line-height: 1.5;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fc-outcome__practice:hover { background: rgba(51, 118, 195, 0.08); }
+.fc-outcome__practice .material-symbols-outlined {
+  font-size: clamp(18px, 1.875cqi, 30px);   /* 24 / 1280 */
+  line-height: 1;
+}
+
+/* Missed list — right column. Heading + white cards with term + definition.
+ * Position from Figma: x=704 (55%), y=178.16 (13.92%), w=512 (40%). Max
+ * height caps at the space above the Exit button so the list scrolls if a
+ * larger deck were used. */
+.fc-outcome__missed {
+  position: absolute;
+  top: 13.92cqi;
+  left: 55cqi;
+  width: 40cqi;
+  max-height: 60cqi;   /* about 768 / 1280; plenty of room above the Exit */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2.5cqi, 40px);   /* 32 / 1280 */
+}
+
+.fc-outcome__missed-heading {
+  margin: 0;
+  font-family: 'Lato', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(13px, 1.4cqi, 22px);   /* 18 / 1280 */
+  line-height: 1.55;                       /* 28 / 18 */
+  color: #285672;
+}
+
+.fc-outcome__missed-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.25cqi, 20px);   /* 16 / 1280 */
+}
+
+.fc-outcome__missed-item {
+  background: #fff;
+  border-radius: clamp(6px, 0.625cqi, 12px);   /* 8 / 1280 */
+  padding: clamp(14px, 1.875cqi, 32px);        /* 24 / 1280 */
+  box-shadow: 0 clamp(4px, 0.9cqi, 14px) clamp(8px, 1.57cqi, 24px) rgba(140, 201, 209, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.625cqi, 10px);   /* 8 / 1280 */
+}
+
+.fc-outcome__missed-term {
+  margin: 0;
+  font-family: 'Lato', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(12px, 1.25cqi, 20px);   /* 16 / 1280 */
+  line-height: 1.5;                          /* 24 / 16 */
+  color: #2f808e;
+}
+.fc-outcome__missed-def {
+  margin: 0;
+  font-family: 'Lato', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(12px, 1.25cqi, 20px);
+  line-height: 1.5;
+  color: #4d4d4d;
+}
+
+/* Solid pill Exit — anchored bottom-right, same shape as Practice but
+ * inverted (filled blue with white text). Bottom offset 3.75cqi mirrors the
+ * top-bar padding so the button sits at the same visual inset. */
+.fc-outcome__exit {
+  position: absolute;
+  right: clamp(14px, 2.5cqi, 32px);
+  bottom: clamp(18px, 3cqi, 40px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 0.625cqi, 12px);
+  min-width: clamp(120px, 15.6cqi, 250px);
+  padding: clamp(8px, 0.94cqi, 16px) clamp(18px, 2.5cqi, 40px);
+  background: #3376c3;
+  color: #fff;
+  border: 0;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(13px, 1.25cqi, 20px);
+  line-height: 1.5;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fc-outcome__exit:hover { background: #2a68b0; }
+.fc-outcome__exit .material-symbols-outlined {
+  font-size: clamp(18px, 1.875cqi, 30px);
+  line-height: 1;
+}
+
+/* ---- Outcome entrance animation ---------------------------------------- *
+ * On mount, elements fade in and settle up from a small offset, in a cascade
+ * from left-column → right-column → Exit. easeOutExpo gives a soft "landing"
+ * (fast start, gentle deceleration) that reads as elegant rather than snappy.
+ * Wrapped in prefers-reduced-motion: no-preference so people who prefer
+ * static UI get the elements in place immediately (base styles unchanged).  */
+@keyframes fc-outcome-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fc-outcome__hero-icon,
+  .fc-outcome__score,
+  .fc-outcome__headline,
+  .fc-outcome__note,
+  .fc-outcome__practice,
+  .fc-outcome__missed-heading,
+  .fc-outcome__missed-item,
+  .fc-outcome__exit {
+    animation: fc-outcome-in 550ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Left column cascade */
+  .fc-outcome__hero-icon { animation-delay: 40ms;  }
+  .fc-outcome__score     { animation-delay: 120ms; }
+  .fc-outcome__headline  { animation-delay: 220ms; }
+  .fc-outcome__note      { animation-delay: 300ms; }
+  .fc-outcome__practice  { animation-delay: 380ms; }
+
+  /* Right column cascade — starts slightly after the icon so both columns
+   * feel like they're arriving together, but the eye still tracks left → right. */
+  .fc-outcome__missed-heading         { animation-delay: 120ms; }
+  .fc-outcome__missed-item:nth-child(1) { animation-delay: 220ms; }
+  .fc-outcome__missed-item:nth-child(2) { animation-delay: 300ms; }
+  .fc-outcome__missed-item:nth-child(3) { animation-delay: 380ms; }
+  .fc-outcome__missed-item:nth-child(4) { animation-delay: 460ms; }
+
+  /* Exit last, once the recap has arrived */
+  .fc-outcome__exit { animation-delay: 500ms; }
+}
