@@ -1,0 +1,212 @@
+/* ============================================================================
+ * COURSE BLOCK — welcome hero + "About This Course" (stages 1 & 2).
+ *
+ * Parallax pattern: the illustration + top gradient are painted as fixed
+ * background layers on .wgu-block-course, so they don't scroll with content.
+ * Text content scrolls normally on top. Adding more stages is just appending
+ * another <section class="course-…"> — the shared bg stays pinned throughout.
+ *
+ * Scoped under .wgu-block-course / .course-*. Nothing leaks.
+ * ==========================================================================*/
+
+/* --- Detail chrome: same demo pattern as flashcards. No rail, no spec. ---- */
+.workbench--course-demo,
+.workbench--course-demo.is-spec-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workbench--course-demo .stage {
+  width: 100%;         /* override the base 900px so the hero is full width */
+  max-width: 100%;
+  min-width: 320px;
+  flex: 1;             /* fill the frame */
+}
+.workbench--course-demo .stage-frame {
+  width: 100%;
+}
+.workbench--course-demo .stage-wrap {
+  padding: 0;
+  overflow: visible;
+  gap: 0;
+}
+/* The wrap is edge-to-edge so the hero can be full width, but the toolbar
+ * (with the Preview button) still needs breathing room from the edges. */
+.workbench--course-demo .stage-toolbar {
+  padding: 10px 24px;
+}
+body:has(.detail--course-demo) .topbar {
+  position: static;
+}
+
+/* Drop the stage's white frame AND its overflow:auto so the block's canvas
+ * reaches edge-to-edge and page-level scroll drives the parallax. Also drop
+ * container-type: inline-size — its implied layout containment establishes a
+ * containing block for fixed descendants, which breaks the parallax bg. */
+.stage:has(.wgu-block-course) {
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  overflow: visible;
+  container-type: normal;
+}
+
+/* --- Block ---------------------------------------------------------------- */
+/* Parallax via fixed background layers: illustration + top gradient are
+ * attached to the viewport so content scrolls but they stay put. */
+.wgu-block-course {
+  position: relative;
+  width: 100%;
+  color: var(--pgn-wgu-color-text-pure-white);
+  font-family: var(--pgn-wgu-family-sora);
+  background-color: #285672;
+  background-image:
+    linear-gradient(
+      to bottom,
+      #285672 0%,
+      rgba(40, 86, 114, 0.5) 60%,
+      rgba(40, 86, 114, 0) 100%
+    ),
+    url("../assets/course-hero.png");
+  background-repeat: no-repeat, no-repeat;
+  background-attachment: fixed, fixed;
+  background-size: 100% 51vh, cover;
+  background-position: top center, center 45%;
+}
+
+/* --- Sections ------------------------------------------------------------- */
+/* Every section is min-100vh so it reads as a "screen" of the block. The
+ * FIRST section (hero) is capped to the visible viewport (viewport minus
+ * catalog chrome above the stage) via --first-section-h from JS, so the
+ * initial view fits without forcing scroll. */
+.course-hero,
+.course-about {
+  position: relative;
+  min-height: 100vh;
+}
+.course-hero {
+  min-height: var(--first-section-h, 100vh);
+}
+
+/* --- Hero ----------------------------------------------------------------- */
+.course-hero__content {
+  position: relative;
+  z-index: 2;
+  padding-top: clamp(32px, 6vh, 64px);
+  text-align: center;
+}
+
+.course-hero__welcome {
+  margin: 0;
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: var(--pgn-wgu-weight-regular);
+  font-size: clamp(20px, 2.2vw, 30px);
+  line-height: 1.47;
+}
+
+.course-hero__title {
+  margin: 8px 0 0;
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: var(--pgn-wgu-weight-bold);
+  font-size: clamp(48px, 7.5vw, 96px);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+}
+
+/* --- About ---------------------------------------------------------------- */
+/* Card centred in the viewport. The circular anchor button peeks half above
+ * the card via top: -36px on absolute positioning. */
+.course-about {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(80px, 12vh, 160px) clamp(16px, 4vw, 48px);
+}
+
+.course-about__inner {
+  position: relative;
+  width: min(800px, 100%);
+}
+
+.course-about__anchor {
+  position: absolute;
+  top: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72px;
+  height: 72px;
+  padding: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pgn-wgu-background-pure-white);
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 10px 17.5px rgba(177, 188, 201, 0.3));
+}
+.course-about__anchor img {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+.course-about__anchor:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 4px;
+}
+
+.course-about__card {
+  position: relative;
+  z-index: 1;
+  background: var(--pgn-wgu-background-main-navy);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--pgn-wgu-radius-xl);
+  padding: clamp(24px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.course-about__title {
+  margin: 0;
+  font-family: var(--pgn-wgu-family-sora);
+  font-weight: var(--pgn-wgu-weight-bold);
+  font-size: var(--pgn-wgu-size-h3);
+  line-height: var(--pgn-wgu-line-height-h3);
+  color: var(--paragon-color-cyan-300);
+}
+
+.course-about__para {
+  margin: 0;
+  font-family: var(--pgn-wgu-family-lato);
+  font-weight: var(--pgn-wgu-weight-regular);
+  font-size: var(--pgn-wgu-size-body-20);
+  line-height: 32px;
+  color: var(--pgn-wgu-color-text-pure-white);
+}
+
+/* --- Logo: pinned to the viewport via a body pseudo-element so it stays put
+ * as the reader scrolls between sections (matching the fixed illustration).
+ * Attached to body — not the block — so no ancestor container-type / transform
+ * can turn `position: fixed` into container-relative. The mask + solid white
+ * background recolours the transparent PNG to solid white while preserving
+ * its alpha (equivalent to filter: brightness(0) invert(1) on an <img>). */
+body:has(.wgu-block-course)::after {
+  content: "";
+  position: fixed;
+  right: clamp(16px, 2.5vw, 32px);
+  bottom: clamp(16px, 2.5vh, 24px);
+  width: 96px;
+  height: calc(96px * 214 / 650);   /* preserve wgu-logo.png aspect ratio */
+  background-color: #ffffff;
+  -webkit-mask: url("../assets/wgu-logo.png") no-repeat center / contain;
+  mask: url("../assets/wgu-logo.png") no-repeat center / contain;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Preview mode: the block fills the browser viewport. The first section
+ * inherits the default 100vh since there's no catalog chrome above. */
+body.is-interactive-preview .wgu-block-course {
+  width: 100vw;
+  min-height: 100vh;
+}
