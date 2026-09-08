@@ -44,6 +44,15 @@ const BLOCKS = [
     desc: "A set of flip cards for recall practice. To be specified — behaviour, deck size, and progression still to define.",
     ready: false,
   },
+  {
+    id: "course",
+    name: "Course Block",
+    status: "in-review",
+    statusLabel: "Planning",
+    desc: "To be specified — scope, structure, and behaviour still to define.",
+    ready: true,
+    kind: "course",
+  },
 ];
 const blockById = (id) => BLOCKS.find((b) => b.id === id);
 
@@ -65,6 +74,7 @@ function route() {
   // Full-width preview of a flashcards mockup screen (planning stage).
   const fcPreview = hash.match(/^\/preview\/flashcards\/([\w-]+)/);
   if (fcPreview) { renderFlashcardsPreview(fcPreview[1]); return; }
+  if (hash.match(/^\/preview\/course/)) { renderCoursePreview(); return; }
   const m = hash.match(/^\/block\/([\w-]+)/);
   if (m && blockById(m[1])) renderDetail(m[1]);
   else renderCatalog();
@@ -118,7 +128,11 @@ function catalogCard(b) {
   card.href = `#/block/${b.id}`;
 
   const prev = h("div", "card__preview");
-  prev.appendChild(!b.ready ? miniDeferredPreview() : b.kind === "interactive" ? miniInteractivePreview() : miniFlexiblePreview());
+  const preview = !b.ready ? miniDeferredPreview()
+    : b.kind === "interactive" ? miniInteractivePreview()
+    : b.kind === "course" ? miniCoursePreview()
+    : miniFlexiblePreview();
+  prev.appendChild(preview);
   card.appendChild(prev);
 
   const body = h("div", "card__body");
@@ -181,6 +195,22 @@ function miniInteractivePreview() {
     </div>`;
   return w;
 }
+/* Course: a stack of module rows suggesting a structured curriculum. Placeholder
+ * until the block itself is designed. */
+function miniCoursePreview() {
+  const w = h("div");
+  w.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="height:10px;width:55%;background:#223e5d;border-radius:2px;"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:2px;">
+        <div style="height:12px;background:#f2f4f6;border:1px solid #e2e5e8;border-radius:3px;"></div>
+        <div style="height:12px;background:#f2f4f6;border:1px solid #e2e5e8;border-radius:3px;"></div>
+        <div style="height:12px;background:#f2f4f6;border:1px solid #e2e5e8;border-radius:3px;"></div>
+      </div>
+    </div>`;
+  return w;
+}
+
 function miniDeferredPreview() {
   const w = h("div");
   w.style.cssText = "height:100%;display:flex;align-items:center;justify-content:center;color:#aeb4ba;font-family:var(--c-mono);font-size:12px;border:1px dashed #d3d7db;border-radius:6px;";
@@ -196,6 +226,7 @@ function renderDetail(id) {
   app.replaceChildren();
   app.appendChild(topbar());
   if (b.id === "flashcards") return renderFlashcardsDetail(b);
+  if (b.kind === "course") return renderCourseDetail(b);
   if (!b.ready) return renderDeferredDetail(b);
   if (b.kind === "interactive") return renderInteractiveDetail(b);
 
@@ -460,6 +491,118 @@ function renderDeferredDetail(b) {
 
   detail.appendChild(workbench);
   app.appendChild(detail);
+}
+
+/* ============================================================================
+ * COURSE BLOCK DETAIL — stage 1: full-viewport hero with a sticky illustration
+ * (parallax). No rail, no spec, no toolbar — the block is meant to cover the
+ * viewport with no chrome distraction. The hero's height is computed to the
+ * available viewport (viewport height minus everything above the stage) so
+ * nothing forces initial scroll. When future stages are appended below the
+ * hero inside .wgu-block-course, they scroll over the same pinned bg.
+ * ==========================================================================*/
+function renderCourseDetail(b) {
+  const detail = h("div", "detail");
+  detail.classList.add("detail--course-demo");
+  const header = h("div", "detail__header");
+  header.appendChild(backLink());
+  const titleRow = h("div", "detail__title-row");
+  titleRow.appendChild(h("h1", "detail__title", b.name));
+  titleRow.appendChild(statusBadge(b.status, b.statusLabel));
+  header.appendChild(titleRow);
+  detail.appendChild(header);
+
+  const workbench = h("div", "workbench");
+  workbench.classList.add("workbench--course-demo");
+
+  const stageWrap = h("div", "stage-wrap");
+  // Minimal toolbar: Preview only. Same shape as the flashcards Preview button
+  // so users find it in the expected spot.
+  const toolbar = h("div", "stage-toolbar");
+  toolbar.appendChild(h("span", "stage-toolbar__spacer"));
+  const stagePresets = h("div", "stage-presets");
+  const previewBtn = h("button", "stage-presets__preview");
+  previewBtn.type = "button";
+  previewBtn.title = "Open a full-width preview of this screen in a new tab";
+  previewBtn.innerHTML = 'Preview <span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span>';
+  previewBtn.addEventListener("click", () => { window.open("#/preview/course", "_blank"); });
+  stagePresets.appendChild(previewBtn);
+  toolbar.appendChild(stagePresets);
+  stageWrap.appendChild(toolbar);
+
+  const stageFrame = h("div", "stage-frame");
+  const stage = h("div", "stage");
+  const stageInner = h("div", "stage__inner");
+  stageInner.appendChild(buildCourseBlock());
+  stage.appendChild(stageInner);
+  stageFrame.appendChild(stage);
+  stageWrap.appendChild(stageFrame);
+  workbench.appendChild(stageWrap);
+  detail.appendChild(workbench);
+  app.appendChild(detail);
+
+  // Fit the FIRST section to the visible viewport area below the catalog
+  // chrome so the initial view "covers the viewport" without forcing scroll.
+  // Subsequent sections keep the default 100vh. --first-section-h is read by
+  // course.css to size .course-hero.
+  const block = stageInner.querySelector(".wgu-block-course");
+  function fitFirstSection() {
+    const top = stage.getBoundingClientRect().top;
+    const avail = Math.max(320, window.innerHeight - top);
+    block.style.setProperty("--first-section-h", avail + "px");
+  }
+  requestAnimationFrame(fitFirstSection);
+  window.addEventListener("resize", fitFirstSection);
+}
+
+/* Full-viewport preview of the course block — no catalog chrome, just the
+ * block filling the window. The first section sizes to the actual viewport
+ * since there's no chrome above it. */
+function renderCoursePreview() {
+  document.body.classList.add("is-interactive-preview");   // reuse preview shell styles
+  app.replaceChildren();
+  app.classList.add("preview-mode");
+  const stage = h("div", "preview-stage");
+  stage.appendChild(buildCourseBlock());
+  app.appendChild(stage);
+  const block = stage.querySelector(".wgu-block-course");
+  function fit() {
+    block.style.setProperty("--first-section-h", window.innerHeight + "px");
+  }
+  requestAnimationFrame(fit);
+  window.addEventListener("resize", fit);
+}
+
+/* Markup for the course block. Two sections so far:
+ *   - .course-hero      welcome title (stage 1)
+ *   - .course-about     navy card with title + copy (stage 2, scrolls in)
+ * The illustration + top gradient are painted as fixed background layers on
+ * .wgu-block-course (see course.css) so they stay pinned across all sections.
+ * A logo copy sits at the bottom-right of each section so the WGU mark is
+ * always visible as the reader scrolls between sections. */
+function buildCourseBlock() {
+  const wrap = h("div", "wgu-block wgu-block-course");
+  wrap.innerHTML = `
+    <section class="course-hero">
+      <div class="course-hero__content">
+        <p class="course-hero__welcome">Welcome to</p>
+        <h1 class="course-hero__title">Social Psychology</h1>
+      </div>
+    </section>
+    <section class="course-about">
+      <div class="course-about__inner">
+        <button class="course-about__anchor" type="button" aria-label="Scroll to next section">
+          <img src="assets/course-arrow-down.svg" alt="" />
+        </button>
+        <div class="course-about__card">
+          <h2 class="course-about__title">About This Course &amp; Why It Matters</h2>
+          <p class="course-about__para">Social psychology gives you tools to better understand behavior in situations you experience every day. Whether you are interpreting a disagreement at work, reacting to something on social media, or making decisions in a group, your perceptions are shaped by social influences.</p>
+          <p class="course-about__para">By learning how these influences work, you can make more informed decisions, question assumptions, and better understand both your own behavior and the behavior of others.</p>
+        </div>
+      </div>
+    </section>
+  `;
+  return wrap;
 }
 
 /* ============================================================================
